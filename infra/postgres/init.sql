@@ -1,0 +1,3 @@
+CREATE DATABASE users_db;
+CREATE DATABASE students_db;
+CREATE DATABASE staff_db;

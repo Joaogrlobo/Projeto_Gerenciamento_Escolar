@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: student-service, namespace: distrischool }
+spec:
+  replicas: 2
+  selector: { matchLabels: { app: student-service } }
+  template:
+    metadata: { labels: { app: student-service } }
+    spec:
+      containers:
+        - name: student-service
+          image: distrischool/student-service:0.1
+          imagePullPolicy: Never
+          ports: [{ containerPort: 3002 }]
+          env:
+            - { name: PORT, value: "3002" }
+            - name: POSTGRES_PASSWORD
+              valueFrom: { secretKeyRef: { name: distrischool-secrets, key: postgres-password } }
+            - { name: DATABASE_URL, value: "postgres://postgres:$(POSTGRES_PASSWORD)@postgres:5432/students_db" }
+            - name: JWT_SECRET
+              valueFrom: { secretKeyRef: { name: distrischool-secrets, key: jwt-secret } }
+            - name: ADMIN_EMAIL
+              valueFrom: { secretKeyRef: { name: distrischool-secrets, key: admin-email } }
+            - name: ADMIN_PASSWORD
+              valueFrom: { secretKeyRef: { name: distrischool-secrets, key: admin-password } }
+          readinessProbe:
+            httpGet: { path: /health, port: 3002 }
+            initialDelaySeconds: 5
+          livenessProbe:
+            httpGet: { path: /health, port: 3002 }
+            initialDelaySeconds: 15
+---
+apiVersion: v1
+kind: Service
+metadata: { name: student-service, namespace: distrischool }
+spec:
+  selector: { app: student-service }
+  ports: [{ port: 3002, targetPort: 3002 }]

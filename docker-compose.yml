@@ -1,0 +1,49 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./infra/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports: [ "5432:5432" ]
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}" ]
+      interval: 5s
+      retries: 10
+
+  user-service:
+    build: ./services/user-service
+    environment:
+      PORT: 3001
+      DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/users_db
+      JWT_SECRET: ${JWT_SECRET:-troque-este-segredo}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@distrischool.com}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin123}
+    ports: [ "3001:3001" ]
+    depends_on:
+      postgres: { condition: service_healthy }
+
+  student-service:
+    build: ./services/student-service
+    environment:
+      PORT: 3002
+      DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/students_db
+      JWT_SECRET: ${JWT_SECRET:-troque-este-segredo}
+    ports: [ "3002:3002" ]
+    depends_on:
+      postgres: { condition: service_healthy }
+
+  staff-service:
+    build: ./services/staff-service
+    environment:
+      PORT: 3003
+      DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/staff_db
+      JWT_SECRET: ${JWT_SECRET:-troque-este-segredo}
+    ports: [ "3003:3003" ]
+    depends_on:
+      postgres: { condition: service_healthy }
+
+volumes:
+  pgdata:

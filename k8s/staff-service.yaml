@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: staff-service, namespace: distrischool }
+spec:
+  replicas: 2
+  selector: { matchLabels: { app: staff-service } }
+  template:
+    metadata: { labels: { app: staff-service } }
+    spec:
+      containers:
+        - name: staff-service
+          image: distrischool/staff-service:0.1
+          imagePullPolicy: Never
+          ports: [{ containerPort: 3003 }]
+          env:
+            - { name: PORT, value: "3003" }
+            - name: POSTGRES_PASSWORD
+              valueFrom: { secretKeyRef: { name: distrischool-secrets, key: postgres-password } }
+            - { name: DATABASE_URL, value: "postgres://postgres:$(POSTGRES_PASSWORD)@postgres:5432/staff_db" }
+            - name: JWT_SECRET
+              valueFrom: { secretKeyRef: { name: distrischool-secrets, key: jwt-secret } }
+            - name: ADMIN_EMAIL
+              valueFrom: { secretKeyRef: { name: distrischool-secrets, key: admin-email } }
+            - name: ADMIN_PASSWORD
+              valueFrom: { secretKeyRef: { name: distrischool-secrets, key: admin-password } }
+          readinessProbe:
+            httpGet: { path: /health, port: 3003 }
+            initialDelaySeconds: 5
+          livenessProbe:
+            httpGet: { path: /health, port: 3003 }
+            initialDelaySeconds: 15
+---
+apiVersion: v1
+kind: Service
+metadata: { name: staff-service, namespace: distrischool }
+spec:
+  selector: { app: staff-service }
+  ports: [{ port: 3003, targetPort: 3003 }]
