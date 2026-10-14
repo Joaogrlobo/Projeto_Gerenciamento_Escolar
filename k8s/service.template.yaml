@@ -14,9 +14,11 @@ spec:
           ports: [{ containerPort: __PORT__ }]
           env:
             - { name: PORT, value: "__PORT__" }
+            - name: POSTGRES_USER
+              valueFrom: { secretKeyRef: { name: distrischool-secrets, key: postgres-user } }
             - name: POSTGRES_PASSWORD
               valueFrom: { secretKeyRef: { name: distrischool-secrets, key: postgres-password } }
-            - { name: DATABASE_URL, value: "postgres://postgres:$(POSTGRES_PASSWORD)@postgres:5432/__DB__" }
+            - { name: DATABASE_URL, value: "postgres://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@postgres:5432/__DB__" }
             - name: JWT_SECRET
               valueFrom: { secretKeyRef: { name: distrischool-secrets, key: jwt-secret } }
             - name: ADMIN_EMAIL

@@ -126,6 +126,7 @@ Get-Content .env | ForEach-Object {
 }
 kubectl -n distrischool delete secret distrischool-secrets --ignore-not-found
 kubectl -n distrischool create secret generic distrischool-secrets `
+    "--from-literal=postgres-user=$($config['POSTGRES_USER'])" `
     "--from-literal=postgres-password=$($config['POSTGRES_PASSWORD'])" `
     "--from-literal=jwt-secret=$($config['JWT_SECRET'])" `
     "--from-literal=admin-email=$($config['ADMIN_EMAIL'])" `
