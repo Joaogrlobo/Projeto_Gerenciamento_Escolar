@@ -9,7 +9,7 @@ spec:
     spec:
       containers:
         - name: staff-service
-          image: distrischool/staff-service:0.1
+          image: distrischool/staff-service:0.2
           imagePullPolicy: Never
           ports: [{ containerPort: 3003 }]
           env:
@@ -21,10 +21,11 @@ spec:
             - { name: DATABASE_URL, value: "postgres://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@postgres:5432/staff_db" }
             - name: JWT_SECRET
               valueFrom: { secretKeyRef: { name: distrischool-secrets, key: jwt-secret } }
-            - name: ADMIN_EMAIL
-              valueFrom: { secretKeyRef: { name: distrischool-secrets, key: admin-email } }
-            - name: ADMIN_PASSWORD
-              valueFrom: { secretKeyRef: { name: distrischool-secrets, key: admin-password } }
+            - name: RABBITMQ_USER
+              valueFrom: { secretKeyRef: { name: distrischool-secrets, key: rabbitmq-user } }
+            - name: RABBITMQ_PASSWORD
+              valueFrom: { secretKeyRef: { name: distrischool-secrets, key: rabbitmq-password } }
+            - { name: RABBITMQ_URL, value: "amqp://$(RABBITMQ_USER):$(RABBITMQ_PASSWORD)@rabbitmq:5672" }
           readinessProbe:
             httpGet: { path: /health, port: 3003 }
             initialDelaySeconds: 5

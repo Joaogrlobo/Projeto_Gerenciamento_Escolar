@@ -1,0 +1,49 @@
+# Template for generating service manifests; do not apply directly.
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: __NAME__, namespace: distrischool }
+spec:
+  replicas: 2
+  selector: { matchLabels: { app: __NAME__ } }
+  template:
+    metadata: { labels: { app: __NAME__ } }
+    spec:
+      containers:
+        - name: __NAME__
+          image: distrischool/__NAME__:0.2
+          imagePullPolicy: Never
+          ports: [{ containerPort: __PORT__ }]
+          env:
+            - { name: PORT, value: "__PORT__" }
+            - name: POSTGRES_USER
+              valueFrom: { secretKeyRef: { name: distrischool-secrets, key: postgres-user } }
+            - name: POSTGRES_PASSWORD
+              valueFrom: { secretKeyRef: { name: distrischool-secrets, key: postgres-password } }
+            - { name: DATABASE_URL, value: "postgres://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@postgres:5432/__DB__" }
+            - name: JWT_SECRET
+              valueFrom: { secretKeyRef: { name: distrischool-secrets, key: jwt-secret } }
+            - name: RABBITMQ_USER
+              valueFrom: { secretKeyRef: { name: distrischool-secrets, key: rabbitmq-user } }
+            - name: RABBITMQ_PASSWORD
+              valueFrom: { secretKeyRef: { name: distrischool-secrets, key: rabbitmq-password } }
+            - { name: RABBITMQ_URL, value: "amqp://$(RABBITMQ_USER):$(RABBITMQ_PASSWORD)@rabbitmq:5672" }
+            - { name: CORS_ORIGIN, value: "http://localhost:3000" }
+            - { name: USER_SERVICE_URL, value: "http://user-service:3001" }
+            - { name: STUDENT_SERVICE_URL, value: "http://student-service:3002" }
+            - { name: STAFF_SERVICE_URL, value: "http://staff-service:3003" }
+            - { name: ACADEMIC_SERVICE_URL, value: "http://academic-service:3004" }
+            - { name: ADMINISTRATIVE_SERVICE_URL, value: "http://administrative-service:3005" }
+            - { name: NOTIFICATION_SERVICE_URL, value: "http://notification-service:3006" }
+          readinessProbe:
+            httpGet: { path: /health, port: __PORT__ }
+            initialDelaySeconds: 5
+          livenessProbe:
+            httpGet: { path: /health, port: __PORT__ }
+            initialDelaySeconds: 15
+---
+apiVersion: v1
+kind: Service
+metadata: { name: __NAME__, namespace: distrischool }
+spec:
+  selector: { app: __NAME__ }
+  ports: [{ port: __PORT__, targetPort: __PORT__ }]

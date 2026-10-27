@@ -13,6 +13,18 @@ services:
       interval: 5s
       retries: 10
 
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-distrischool}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-troque-esta-senha}
+    ports: [ "15672:15672" ]
+    healthcheck:
+      test: [ "CMD", "rabbitmq-diagnostics", "-q", "ping" ]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
   user-service:
     build: ./services/user-service
     environment:
@@ -21,9 +33,11 @@ services:
       JWT_SECRET: ${JWT_SECRET:-troque-este-segredo}
       ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@distrischool.com}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin123}
-    ports: [ "3001:3001" ]
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:-distrischool}:${RABBITMQ_PASSWORD:-troque-esta-senha}@rabbitmq:5672
+    expose: [ "3001" ]
     depends_on:
       postgres: { condition: service_healthy }
+      rabbitmq: { condition: service_healthy }
 
   student-service:
     build: ./services/student-service
@@ -31,9 +45,11 @@ services:
       PORT: 3002
       DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/students_db
       JWT_SECRET: ${JWT_SECRET:-troque-este-segredo}
-    ports: [ "3002:3002" ]
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:-distrischool}:${RABBITMQ_PASSWORD:-troque-esta-senha}@rabbitmq:5672
+    expose: [ "3002" ]
     depends_on:
       postgres: { condition: service_healthy }
+      rabbitmq: { condition: service_healthy }
 
   staff-service:
     build: ./services/staff-service
@@ -41,9 +57,84 @@ services:
       PORT: 3003
       DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/staff_db
       JWT_SECRET: ${JWT_SECRET:-troque-este-segredo}
-    ports: [ "3003:3003" ]
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:-distrischool}:${RABBITMQ_PASSWORD:-troque-esta-senha}@rabbitmq:5672
+    expose: [ "3003" ]
     depends_on:
       postgres: { condition: service_healthy }
+      rabbitmq: { condition: service_healthy }
+
+  administrative-service:
+    build: ./services/administrative-service
+    environment:
+      PORT: 3005
+      DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/administrative_db
+      JWT_SECRET: ${JWT_SECRET:-troque-este-segredo}
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:-distrischool}:${RABBITMQ_PASSWORD:-troque-esta-senha}@rabbitmq:5672
+      STAFF_SERVICE_URL: http://staff-service:3003
+    expose: [ "3005" ]
+    depends_on:
+      postgres: { condition: service_healthy }
+      rabbitmq: { condition: service_healthy }
+      staff-service: { condition: service_started }
+
+  academic-service:
+    build: ./services/academic-service
+    environment:
+      PORT: 3004
+      DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/academic_db
+      JWT_SECRET: ${JWT_SECRET:-troque-este-segredo}
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:-distrischool}:${RABBITMQ_PASSWORD:-troque-esta-senha}@rabbitmq:5672
+      STUDENT_SERVICE_URL: http://student-service:3002
+      ADMINISTRATIVE_SERVICE_URL: http://administrative-service:3005
+    expose: [ "3004" ]
+    depends_on:
+      postgres: { condition: service_healthy }
+      rabbitmq: { condition: service_healthy }
+      student-service: { condition: service_started }
+      administrative-service: { condition: service_started }
+
+  notification-service:
+    build: ./services/notification-service
+    environment:
+      PORT: 3006
+      DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/notification_db
+      JWT_SECRET: ${JWT_SECRET:-troque-este-segredo}
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:-distrischool}:${RABBITMQ_PASSWORD:-troque-esta-senha}@rabbitmq:5672
+    expose: [ "3006" ]
+    depends_on:
+      postgres: { condition: service_healthy }
+      rabbitmq: { condition: service_healthy }
+
+  api-gateway:
+    build: ./services/api-gateway
+    environment:
+      PORT: 8080
+      JWT_SECRET: ${JWT_SECRET:-troque-este-segredo}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000}
+      LOGIN_RATE_LIMIT: ${LOGIN_RATE_LIMIT:-20}
+      USER_SERVICE_URL: http://user-service:3001
+      STUDENT_SERVICE_URL: http://student-service:3002
+      STAFF_SERVICE_URL: http://staff-service:3003
+      ACADEMIC_SERVICE_URL: http://academic-service:3004
+      ADMINISTRATIVE_SERVICE_URL: http://administrative-service:3005
+      NOTIFICATION_SERVICE_URL: http://notification-service:3006
+    ports: [ "8080:8080" ]
+    depends_on:
+      user-service: { condition: service_started }
+      student-service: { condition: service_started }
+      staff-service: { condition: service_started }
+      academic-service: { condition: service_started }
+      administrative-service: { condition: service_started }
+      notification-service: { condition: service_started }
+
+  frontend:
+    build:
+      context: ./services/frontend
+      args:
+        VITE_API_URL: http://localhost:8080
+    ports: [ "3000:80" ]
+    depends_on:
+      api-gateway: { condition: service_started }
 
 volumes:
   pgdata:

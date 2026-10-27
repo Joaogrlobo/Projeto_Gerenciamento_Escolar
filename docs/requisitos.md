@@ -1,74 +1,74 @@
 # Requisitos do DistriSchool
 
-## Objetivo
+## Objetivo e escopo
 
-O DistriSchool é um sistema distribuído para apoiar a gestão escolar. A primeira entrega separa autenticação e usuários, alunos e funcionários em serviços REST independentes, com persistência PostgreSQL.
+O DistriSchool é um sistema distribuído de gestão escolar. Os serviços de usuário, aluno e funcionário formam a Entrega 1; gateway, administração, acadêmico, notificações e mensageria expandem o sistema. Esta fase documenta as rotas e os casos de validação da Fase 7. A tabela completa de verbos, endpoints e perfis está em [docs/api.md](api.md).
 
 ## Requisitos funcionais
 
-### Usuários e autenticação
+### Entrega 1: autenticação e cadastros
 
-- **RF01:** permitir login por e-mail e senha e emitir um token JWT com validade limitada.
-- **RF02:** permitir cadastro público de usuários com os papéis `student` e `parent`; qualquer papel público inválido deve resultar em cadastro como `student`, sem permitir criação pública de administradores.
-- **RF03:** disponibilizar a identificação do usuário autenticado.
-- **RF04:** permitir que um administrador crie usuários dos papéis `admin`, `teacher`, `student`, `parent` e `staff`, e consulte a lista de usuários.
-- **RF05:** criar automaticamente o usuário administrador inicial quando `ADMIN_EMAIL` e `ADMIN_PASSWORD` estiverem configurados.
-- **RF06:** rejeitar e-mails duplicados e senhas menores que seis caracteres no cadastro.
+- **RF01:** permitir login e emissão de JWT, identificação do usuário autenticado e cadastro público conforme a política de perfis.
+- **RF02:** disponibilizar administração de usuários a `admin`.
+- **RF03:** permitir CRUD e pesquisa de alunos, aplicando os papéis previstos por endpoint.
+- **RF04:** permitir CRUD e pesquisa de funcionários, aplicando os papéis previstos por endpoint.
+- **RF05:** proteger rotas com JWT, rejeitar token ausente/inválido (`401`) e negar papel não autorizado (`403`).
+- **RF06:** disponibilizar saúde do gateway e dos serviços por `GET /health` e `GET /health/services`.
 
-### Alunos
+### Administração
 
-- **RF07:** permitir cadastrar aluno com matrícula e nome obrigatórios, além de data de nascimento, endereço, contato, turma e estado ativo opcionais.
-- **RF08:** permitir consultar alunos e filtrar por nome, matrícula ou turma.
-- **RF09:** permitir consultar, atualizar e excluir aluno pelo identificador.
-- **RF10:** rejeitar matrícula duplicada e informar quando um aluno não existe.
+- **RF07:** disponibilizar consultas e operações de turmas em `/api/administrative/classes`, incluindo horário por turma.
+- **RF08:** disponibilizar consultas e operações de disciplinas em `/api/administrative/subjects`.
+- **RF09:** disponibilizar consultas, criação e remoção de alocações em `/api/administrative/allocations` e consulta de horário de professor em `/api/administrative/teachers/:teacherId/schedule`.
+- **RF10:** rejeitar conflitos de horário para professor, turma ou sala; permitir faixas adjacentes sem sobreposição.
+- **RF11:** rejeitar horário inválido, referência a professor inexistente e operações não permitidas ao perfil estudante.
 
-### Funcionários
+### Acadêmico
 
-- **RF11:** permitir cadastrar funcionários dos tipos `teacher` e `admin_staff`, com nome e e-mail obrigatórios.
-- **RF12:** permitir consultar e filtrar funcionários por tipo, nome ou e-mail.
-- **RF13:** permitir consultar, atualizar e excluir funcionário pelo identificador.
-- **RF14:** rejeitar tipos inválidos e e-mails duplicados.
+- **RF12:** permitir consultar/criar inscrições e alterar seu status em `/api/academic/enrollments`, observando o limite de capacidade da turma.
+- **RF13:** permitir consultar e registrar notas em `/api/academic/grades`, rejeitando nota 11.
+- **RF14:** calcular média ponderada de forma assíncrona e consultável em `/api/academic/students/:id/average`; caso de referência: notas 7 e 9 com pesos 1 e 3, resultado 8,5 em até dez segundos.
+- **RF15:** permitir registro em lote de frequência e consultas em `/api/academic/attendance`, `/api/academic/attendance/summary` e `/api/academic/students/:id/attendance`; o caso de referência contém presença, ausência e atraso e resulta em 66,67%.
+- **RF16:** aplicar perfis de professor e estudante aos endpoints acadêmicos.
 
-### Operação
+### Eventos, notificações e operação
 
-- **RF15:** expor um endpoint `/health` em cada serviço.
-- **RF16:** permitir executar os serviços e os bancos com Docker Compose.
-- **RF17:** disponibilizar manifests Kubernetes para PostgreSQL e para os três serviços.
+- **RF17:** publicar e consumir eventos escolares pelo RabbitMQ, mantendo a API de notificações em `/api/notifications`.
+- **RF18:** verificar o recebimento de uma notificação do tipo `grade.posted`.
+- **RF19:** confirmar existência das filas e consumidores no RabbitMQ Management.
+- **RF20:** verificar que uma criação administrativa não falha quando RabbitMQ está parado, restaurar o broker e observar uma segunda notificação após reconexão.
+- **RF21:** aplicar rate limit ao login como último caso do smoke test e aguardar a janela liberar uma nova autenticação.
+- **RF22:** executar smoke test com `BaseUrl`, dados únicos, relatório `PASS`/`FAIL` com status HTTP, limpeza dos registros gerados mesmo em falha e código de saída não zero quando houver falhas.
+
+## Contratos de rota e perfis
+
+Os endpoints de cliente estão sob `/api` e passam pelo gateway. As únicas exceções são os endpoints de diagnóstico próprios do gateway (`/health` e `/health/services`) e chamadas à API de management do RabbitMQ. Os caminhos e perfis documentados são:
+
+- autenticação e usuários: `/api/auth/*`, `/api/users`;
+- alunos: `/api/students` e `/api/students/:id`;
+- funcionários: `/api/employees` e `/api/employees/:id`;
+- administração: `/api/administrative/classes`, `/api/administrative/subjects`, `/api/administrative/allocations` e `/api/administrative/teachers/:teacherId/schedule`;
+- acadêmico: `/api/academic/enrollments`, `/api/academic/grades`, `/api/academic/attendance`, `/api/academic/attendance/summary` e `/api/academic/students/:id/{average,attendance}`;
+- notificações: `GET /api/notifications` para `admin`.
+
+Verbos HTTP e papéis permitidos por operação estão na [tabela completa da API](api.md). Esta especificação documental não inventa ou reproduz campos de requisição/resposta; esses formatos pertencem aos contratos de cada serviço.
 
 ## Requisitos não funcionais
 
-- **RNF01 — Separação:** cada serviço executa independentemente e mantém seu próprio banco PostgreSQL (`users_db`, `students_db` ou `staff_db`).
-- **RNF02 — API:** os serviços expõem endpoints HTTP/JSON e usam as portas 3001, 3002 e 3003.
-- **RNF03 — Autenticação:** as rotas protegidas validam JWT assinado com `JWT_SECRET`.
-- **RNF04 — Autorização:** as operações verificam os papéis permitidos; a ausência de token retorna 401 e papel sem permissão retorna 403.
-- **RNF05 — Persistência:** dados são armazenados em PostgreSQL; a matrícula do aluno e o e-mail de usuário/funcionário são únicos em suas respectivas bases.
-- **RNF06 — Empacotamento:** cada serviço tem imagem Docker própria e dependências Node.js declaradas em `package.json` e `package-lock.json`.
-- **RNF07 — Configuração:** credenciais e segredo JWT devem ser fornecidos por variáveis de ambiente; `.env` local não deve ser versionado.
-- **RNF08 — Saúde:** cada serviço responde em `/health`, e o Compose aguarda o estado saudável do PostgreSQL antes de iniciar as APIs.
+- **RNF01 — Isolamento:** cada serviço é proprietário do próprio banco/esquema; comunicação síncrona usa HTTP e eventos assíncronos usam RabbitMQ.
+- **RNF02 — Segurança:** JWT e credenciais são lidos do ambiente; `.env`, tokens e senhas não devem ser impressos nem versionados.
+- **RNF03 — Gateway:** clientes usam o gateway publicado, não portas internas de serviços.
+- **RNF04 — Conflitos:** falhas de unicidade/agenda/capacidade devem ser informadas com status apropriado, sem detalhes de banco.
+- **RNF05 — Assincronia:** média e notificações devem ser consultáveis por polling sem bloquear a operação produtora por todo o processamento.
+- **RNF06 — Resiliência:** Compose aguarda RabbitMQ saudável na inicialização; esse requisito não implica disponibilidade contínua durante execução.
+- **RNF07 — Limpeza:** smoke test deve remover só registros gerados no próprio run e não purgar filas/dados preexistentes.
 
-## Arquitetura implementada
+## Limitações de limpeza e execução
 
-| Componente | Responsabilidade | Persistência |
-|---|---|---|
-| `user-service` | Registro, login, JWT e administração de usuários | PostgreSQL `users_db` |
-| `student-service` | CRUD e pesquisa de alunos | PostgreSQL `students_db` |
-| `staff-service` | CRUD e pesquisa de funcionários | PostgreSQL `staff_db` |
-| PostgreSQL | Servidor de dados compartilhado, com bancos separados por serviço | Volume Docker ou PVC Kubernetes |
+Nem todos os domínios oferecem exclusão HTTP: usuários não têm rota de exclusão, inscrições têm apenas alteração de status, frequência tem operações de lote e notificações só têm consulta. Para garantir remoção física de dados temporários, o smoke test usa `psql` dentro do container PostgreSQL somente para IDs e identificadores únicos que ele próprio registrou. A ordem de limpeza respeita dependências e o usuário administrador seed é preservado.
 
-Os serviços de alunos e funcionários validam o token JWT localmente com o mesmo segredo compartilhado. A autorização por perfil é aplicada nas rotas. A comunicação síncrona entre clientes e serviços usa HTTP/JSON; gateway e mensageria não fazem parte desta entrega.
+O caso de RabbitMQ parado interrompe e depois inicia o container local `rabbitmq`. A rotina de restauração ocorre em `finally`; o teste deve ser usado apenas no Compose local isolado e nunca em um ambiente compartilhado. O rate limit é o último caso funcional, após limpeza.
 
-## Perfis e permissões implementados
+## Status de implementação
 
-| Recurso | `admin` | `teacher` | `staff` | `student` | `parent` |
-|---|---:|---:|---:|---:|---:|
-| `/auth/me` com token válido | Sim | Sim | Sim | Sim | Sim |
-| Listar usuários (`GET /users`) | Sim | Não | Não | Não | Não |
-| Criar usuário administrativo (`POST /users`) | Sim | Não | Não | Não | Não |
-| Consultar alunos (`GET /students`, `GET /students/:id`) | Sim | Sim | Sim | Não | Não |
-| Criar/editar aluno | Sim | Não | Sim | Não | Não |
-| Excluir aluno | Sim | Não | Não | Não | Não |
-| Consultar funcionários (`GET /employees`, `GET /employees/:id`) | Sim | Sim | Sim | Não | Não |
-| Criar/editar/excluir funcionário | Sim | Não | Não | Não | Não |
-
-Login e cadastro são públicos. O cadastro público aceita `student` ou `parent`; se outro papel for solicitado, a conta é criada como `student`. Os endpoints `/health` também são públicos. Não há, nesta entrega, endpoint dedicado para que estudantes ou responsáveis consultem seus próprios registros.
-
+A árvore contém o código dos serviços de E1 e os módulos de gateway, administração, acadêmico e notificações. A presença de arquivos não garante que todas as rotas e fluxos estejam integrados ao Compose. A Fase 7 deve ser executada em ambiente local completo após a implementação dos contratos. Não executar esse smoke test durante validação estática: ele cria registros, para/reinicia o broker e aguarda o limite de login expirar.
