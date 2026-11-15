@@ -105,7 +105,7 @@ export default function App() {
     <Route path="/" element={<Page><DashboardPage /></Page>} />
     <Route path="/students" element={<Page><StudentsPage /></Page>} />
     <Route path="/employees" element={<Page><EmployeesPage /></Page>} />
-    <Route path="/users" element={<Page admin><CrudPage title="Usuários" endpoint="/api/users" fields={userFields} columns={['name', 'email', 'role']} /></Page>} />
+    <Route path="/users" element={<Page admin><CrudPage title="Usuários" endpoint="/api/users" fields={userFields} columns={['name', 'email', 'role']} rowActions={false} /></Page>} />
     <Route path="/classes" element={<Page admin><CrudPage title="Turmas" endpoint="/api/administrative/classes" fields={[
       { name: 'name', label: 'Nome da turma', required: true },
       { name: 'school_year', label: 'Ano letivo', type: 'number', required: true },
