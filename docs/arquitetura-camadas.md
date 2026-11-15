@@ -66,6 +66,7 @@ As camadas não devem ser saltadas: routes não acessam services/repositories de
 - Serviço → notificação assíncrona: evento RabbitMQ; a resposta da ação produtora não deve aguardar o envio final de uma notificação.
 - Os serviços E1 validam localmente JWT com segredo compartilhado e aplicam perfis em rotas. A tabela completa de contratos e perfis está em [docs/api.md](api.md).
 - No Compose, `depends_on` com `service_healthy` estabelece uma condição de partida, não resiliência a falha em runtime.
+- Resiliência em runtime: `resilience/` concentra o Circuit Breaker e as novas tentativas; `messaging/relay.js` envia os eventos da outbox ao RabbitMQ.
 
 ## Como adicionar um endpoint
 
@@ -79,4 +80,4 @@ As camadas não devem ser saltadas: routes não acessam services/repositories de
 
 ## Limitações e evolução
 
-A Entrega 2 implementa os serviços, o gateway, eventos RabbitMQ, notificações, frontend e manifests Kubernetes; a validação integrada está disponível em `scripts/smoke-test.ps1`. A evolução prevista para E3 inclui Circuit Breaker e resiliência; E4 prevê CI/CD, monitoramento, testes de carga e documentação final (detalhes em [README](../README.md)).
+A Entrega 2 implementa os serviços, o gateway, eventos RabbitMQ, notificações, frontend e manifests Kubernetes; a validação integrada está disponível em `scripts/smoke-test.ps1`. A Entrega 3 acrescenta Circuit Breaker, novas tentativas, outbox, DLQ e WebSocket, verificados por `scripts/chaos-test.sh`. E4 prevê CI/CD, monitoramento, testes de carga e documentação final (detalhes em [README](../README.md)).

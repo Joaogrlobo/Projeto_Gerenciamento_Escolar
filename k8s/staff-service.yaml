@@ -9,7 +9,7 @@ spec:
     spec:
       containers:
         - name: staff-service
-          image: distrischool/staff-service:0.2
+          image: distrischool/staff-service:0.3
           imagePullPolicy: Never
           ports: [{ containerPort: 3003 }]
           env:

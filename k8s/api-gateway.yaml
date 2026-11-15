@@ -9,7 +9,7 @@ spec:
     spec:
       containers:
         - name: api-gateway
-          image: distrischool/api-gateway:0.2
+          image: distrischool/api-gateway:0.3
           imagePullPolicy: Never
           ports: [{ containerPort: 8080 }]
           env:

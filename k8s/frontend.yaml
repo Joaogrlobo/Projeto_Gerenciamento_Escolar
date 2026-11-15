@@ -9,7 +9,7 @@ spec:
     spec:
       containers:
         - name: frontend
-          image: distrischool/frontend:0.2
+          image: distrischool/frontend:0.3
           imagePullPolicy: Never
           ports: [{ containerPort: 80 }]
           readinessProbe:

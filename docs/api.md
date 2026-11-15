@@ -75,7 +75,14 @@ Rotas protegidas usam `Authorization: Bearer <JWT>`. Login e registro são públ
 
 | Método | Endpoint | Perfil |
 |---|---|---|
-| `GET` | `/api/notifications` | `admin` |
+| `GET` | `/api/notifications` | `admin`, `staff`, `teacher` |
+| `GET` | `/api/notifications/unread-count` | `admin`, `staff`, `teacher` |
+| `POST` | `/api/notifications/seen` | `admin`, `staff`, `teacher` |
+| WebSocket | `/ws/notifications` | Token enviado na primeira mensagem |
+
+Cada perfil recebe apenas os tipos de evento do seu público, definidos em `services/notification-service/src/services/audience.js`. O protocolo do WebSocket está em [mensageria.md](mensageria.md).
+
+Com o Circuit Breaker aberto, o gateway responde `503` com o header `Retry-After` e não chama o serviço. `GET /health/services` informa `status` e `circuit` (`CLOSED`, `OPEN` ou `HALF_OPEN`) de cada serviço.
 
 O endpoint de notificações aceita os parâmetros de consulta `type` e `limit`. O serviço não expõe neste contrato rota pública de criação ou exclusão de notificações. A administração das filas ocorre pela API de RabbitMQ Management em `http://localhost:15672`, fora do gateway.
 
