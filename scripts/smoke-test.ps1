@@ -341,10 +341,14 @@ function Save-NewNotificationIds {
 function Invoke-Compose {
     param([Parameter(Mandatory)][string[]]$Arguments)
     Push-Location $script:ProjectRoot
+    # O docker compose escreve progresso em stderr. No Windows PowerShell 5.1, com
+    # ErrorActionPreference = 'Stop', isso vira erro fatal mesmo com exit code 0.
+    # O sucesso é decidido pelo exit code; o escopo local não afeta o resto do script.
+    $ErrorActionPreference = 'Continue'
     try {
         $output = & docker compose @Arguments 2>&1
         $exitCode = $LASTEXITCODE
-        return [pscustomobject]@{ ExitCode = $exitCode; Output = @($output) }
+        return [pscustomobject]@{ ExitCode = $exitCode; Output = @($output | ForEach-Object { "$_" }) }
     }
     finally {
         Pop-Location
