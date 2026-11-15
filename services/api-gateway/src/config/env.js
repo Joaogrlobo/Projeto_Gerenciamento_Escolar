@@ -7,6 +7,7 @@ module.exports = {
     corsOrigin: process.env.CORS_ORIGIN || 'http://localhost:3000',
     loginRateLimit: Math.max(1, Number.parseInt(process.env.LOGIN_RATE_LIMIT, 10) || 20),
     serviceHealthTimeoutMs: 1500,
+    circuitResetMs: Number(process.env.CIRCUIT_RESET_MS) || 10000,
     services: {
         'user-service': serviceUrl('USER_SERVICE_URL', 'http://user-service:3001'),
         'student-service': serviceUrl('STUDENT_SERVICE_URL', 'http://student-service:3002'),

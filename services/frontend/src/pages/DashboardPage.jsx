@@ -24,6 +24,7 @@ export default function DashboardPage() {
           label: service.label || service.name || service.service || 'API Gateway',
           healthy: String(status).toUpperCase() === 'UP',
           status,
+          circuitOpen: Boolean(service.circuit) && service.circuit !== 'CLOSED',
         };
       });
       if (active) { setHealth(cards); setLoading(false); }
@@ -39,7 +40,7 @@ export default function DashboardPage() {
   return <section className="page">
     <div className="welcome-card"><div><p className="eyebrow">PAINEL DE CONTROLE</p><h1>Olá, {displayName}</h1><p>Acompanhe os serviços e acesse rapidamente as áreas da escola.</p></div><div className="welcome-orbit">✦</div></div>
     <div className="page-heading section-heading"><div><p className="eyebrow">SISTEMA</p><h2>Status dos serviços</h2></div></div>
-    {loading ? <div className="state-message">Verificando serviços…</div> : <div className="health-grid">{health.map((item) => <article className="panel health-card" key={item.path}><div className={`health-dot ${item.healthy ? 'online' : ''}`} /><div><h3>{item.label}</h3><span>{item.status}</span></div><span className={`status-pill ${item.healthy ? 'status-ok' : 'status-down'}`}>{item.healthy ? 'Operacional' : 'Indisponível'}</span></article>)}</div>}
+    {loading ? <div className="state-message">Verificando serviços…</div> : <div className="health-grid">{health.map((item) => <article className="panel health-card" key={item.path}><div className={`health-dot ${item.healthy ? 'online' : ''}`} /><div><h3>{item.label}</h3><span>{item.status}</span></div><span className={`status-pill ${item.healthy && !item.circuitOpen ? 'status-ok' : 'status-down'}`}>{item.circuitOpen ? 'Circuito aberto' : item.healthy ? 'Operacional' : 'Indisponível'}</span></article>)}</div>}
     <div className="page-heading section-heading"><div><p className="eyebrow">ATALHOS</p><h2>Acesso rápido</h2></div></div>
     <div className="shortcut-grid">
       <Link to="/students" className="shortcut-card"><span>01</span><h3>Alunos</h3><p>Consultar e atualizar cadastros.</p></Link>

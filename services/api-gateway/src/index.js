@@ -2,6 +2,7 @@
 const app = require('./app');
 const config = require('./config/env');
 
-app.listen(config.port, () => {
+const server = app.listen(config.port, () => {
     console.log(`api-gateway escutando na porta ${config.port}`);
 });
+server.on('upgrade', app.handleUpgrade);

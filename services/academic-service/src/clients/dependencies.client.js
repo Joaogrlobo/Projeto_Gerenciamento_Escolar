@@ -5,6 +5,12 @@ const {
     NotFoundError,
     ServiceUnavailableError
 } = require('../errors/AppError');
+const { createResilientCall } = require('../resilience/resilient-call');
+
+const ATTEMPT_TIMEOUT_MS = 1200;
+const onUnavailable = () => new ServiceUnavailableError();
+const studentCall = createResilientCall('student-service', { onUnavailable });
+const administrativeCall = createResilientCall('administrative-service', { onUnavailable });
 
 async function getEntity(baseUrl, resource, id, authorization, entityName) {
     if (!baseUrl) throw new ServiceUnavailableError();
@@ -13,7 +19,7 @@ async function getEntity(baseUrl, resource, id, authorization, entityName) {
         response = await fetch(`${baseUrl.replace(/\/+$/, '')}/${resource}/${encodeURIComponent(id)}`, {
             method: 'GET',
             headers: { authorization },
-            signal: AbortSignal.timeout(5000)
+            signal: AbortSignal.timeout(ATTEMPT_TIMEOUT_MS)
         });
     } catch {
         throw new ServiceUnavailableError();
@@ -49,18 +55,20 @@ function validateEntity(body, entityName) {
 }
 
 async function getStudent(id, authorization) {
-    const response = await getEntity(config.studentServiceUrl, 'students', id, authorization, 'aluno');
+    const response = await studentCall(
+        () => getEntity(config.studentServiceUrl, 'students', id, authorization, 'aluno')
+    );
     return validateEntity(response, 'student');
 }
 
 async function getCourse(id, authorization) {
-    const response = await getEntity(
+    const response = await administrativeCall(() => getEntity(
         config.administrativeServiceUrl,
         'classes',
         id,
         authorization,
         'turma'
-    );
+    ));
     return validateEntity(response, 'class');
 }
 

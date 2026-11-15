@@ -6,6 +6,7 @@ const accessLog = require('./middlewares/access-log');
 const { createAuthMiddleware } = require('./middlewares/auth');
 const createRateLimiters = require('./middlewares/rate-limit');
 const requestId = require('./middlewares/request-id');
+const { getBreaker, circuitStates } = require('./resilience/proxy-breakers');
 
 const app = express();
 const rateLimiters = createRateLimiters(config.loginRateLimit);
@@ -44,14 +45,15 @@ app.get('/health', (_req, res) => {
 });
 
 app.get('/health/services', async (_req, res) => {
+    const circuits = circuitStates();
     const serviceChecks = Object.entries(config.services).map(async ([service, baseUrl]) => {
         try {
             const response = await fetch(`${baseUrl}/health`, {
                 signal: AbortSignal.timeout(config.serviceHealthTimeoutMs)
             });
-            return [service, { status: response.ok ? 'UP' : 'DOWN' }];
+            return [service, { status: response.ok ? 'UP' : 'DOWN', circuit: circuits[service] }];
         } catch {
-            return [service, { status: 'DOWN' }];
+            return [service, { status: 'DOWN', circuit: circuits[service] }];
         }
     });
 
@@ -85,6 +87,9 @@ for (const route of routes) {
                 : undefined,
         on: {
             error: (error, _req, res) => {
+                if (res?.locals) {
+                    res.locals.upstreamFailed = true;
+                }
                 if (!res || res.headersSent || res.writableEnded) {
                     return;
                 }
@@ -98,18 +103,42 @@ for (const route of routes) {
         }
     });
 
+    const breaker = getBreaker(route.service);
+
     app.use(route.prefix, (req, res, next) => {
         req.url = req.originalUrl;
         const timeout = setTimeout(() => {
             if (!res.headersSent && !res.writableEnded) {
+                res.locals.upstreamFailed = true;
                 res.status(504).json({ error: 'Tempo limite do serviço excedido' });
             }
         }, 10_000);
         res.once('finish', () => clearTimeout(timeout));
         res.once('close', () => clearTimeout(timeout));
-        proxy(req, res, next);
+        breaker.fire(proxy, req, res, next).catch((error) => {
+            if (error.code === 'EOPENBREAKER') {
+                res.set('Retry-After', String(Math.ceil(config.circuitResetMs / 1000)));
+                res.status(503).json({ error: 'Serviço temporariamente indisponível' });
+            }
+        });
     });
 }
+
+const notificationsSocket = createProxyMiddleware({
+    target: config.services['notification-service'],
+    changeOrigin: true,
+    on: {
+        error: (_error, _req, socket) => socket.destroy?.()
+    }
+});
+
+app.handleUpgrade = (req, socket, head) => {
+    if (req.url.split('?')[0] !== '/ws/notifications') {
+        socket.destroy();
+        return;
+    }
+    notificationsSocket.upgrade(req, socket, head);
+};
 
 app.use((_req, res) => {
     res.status(404).json({ error: 'Rota não encontrada' });
