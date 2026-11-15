@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { http } from '../api/client';
+import { useNotifications } from '../realtime/NotificationsProvider';
 
 function recordsFrom(data) {
   return Array.isArray(data) ? data : data?.items || data?.data || [];
@@ -238,12 +239,19 @@ export function NotificationsPage() {
     catch (requestError) { setError(requestError.message); }
     finally { setLoading(false); }
   }, []);
-  useEffect(() => { load(); }, [load]);
+  const { connected, latest, markSeen } = useNotifications();
+  useEffect(() => { load(); }, [load, connected]);
+  const newest = latest[0]?.event_id;
+  useEffect(() => { markSeen(); }, [markSeen, newest]);
+  const merged = useMemo(() => {
+    const known = new Set(records.map((item) => item.event_id));
+    return [...latest.filter((item) => !known.has(item.event_id)), ...records];
+  }, [latest, records]);
   return <section className="page">
-    <div className="page-heading"><div><p className="eyebrow">COMUNICAÇÃO</p><h1>Notificações</h1></div><button className="button button-secondary" onClick={load} type="button">Atualizar</button></div>
+    <div className="page-heading"><div><p className="eyebrow">COMUNICAÇÃO</p><h1>Notificações</h1></div><span className={`status-pill ${connected ? 'status-ok' : 'status-down'}`}>{connected ? 'Ao vivo' : 'Reconectando…'}</span></div>
     <ErrorMessage>{error}</ErrorMessage>
     <div className="panel table-panel"><h2>Eventos recebidos</h2>
-      {loading ? <div className="state-message">Carregando…</div> : records.length === 0 ? <div className="state-message">Nenhuma notificação recebida.</div> : <div className="notification-list">{records.map((item) => <article className="notification-item" key={item.event_id}><div><h3>{item.type || 'Notificação'}</h3><p>{item.message}</p><small>{item.occurred_at || item.received_at || ''}</small></div></article>)}</div>}
+      {loading ? <div className="state-message">Carregando…</div> : merged.length === 0 ? <div className="state-message">Nenhuma notificação recebida.</div> : <div className="notification-list">{merged.map((item) => <article className="notification-item" key={item.event_id}><div><h3>{item.type || 'Notificação'}</h3><p>{item.message}</p><small>{item.occurred_at || item.received_at || ''}</small></div></article>)}</div>}
     </div>
   </section>;
 }
