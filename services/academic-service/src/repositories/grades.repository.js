@@ -33,8 +33,8 @@ async function findByEnrollment(id, client = pool) {
     return result.rows[0] || null;
 }
 
-async function create(grade) {
-    const result = await pool.query(
+async function create(grade, client = pool) {
+    const result = await client.query(
         `INSERT INTO academic_grades
             (enrollment_id, student_id, course_id, subject, value, weight)
          VALUES ($1, $2, $3, $4, $5, $6)
@@ -44,8 +44,8 @@ async function create(grade) {
     return result.rows[0];
 }
 
-async function update(id, grade) {
-    const result = await pool.query(
+async function update(id, grade, client = pool) {
+    const result = await client.query(
         `UPDATE academic_grades
          SET subject = $2, value = $3, weight = $4, updated_at = now()
          WHERE id = $1
@@ -55,8 +55,8 @@ async function update(id, grade) {
     return result.rows[0] || null;
 }
 
-async function remove(id) {
-    const result = await pool.query('DELETE FROM academic_grades WHERE id = $1 RETURNING *', [id]);
+async function remove(id, client = pool) {
+    const result = await client.query('DELETE FROM academic_grades WHERE id = $1 RETURNING *', [id]);
     return result.rows[0] || null;
 }
 

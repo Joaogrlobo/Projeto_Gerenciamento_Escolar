@@ -66,4 +66,12 @@ CREATE TABLE IF NOT EXISTS academic_processed_events (
   event_id VARCHAR(200) PRIMARY KEY,
   processed_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+CREATE TABLE IF NOT EXISTS outbox_events (
+  id BIGSERIAL PRIMARY KEY,
+  event_id UUID UNIQUE NOT NULL,
+  type TEXT NOT NULL,
+  envelope JSONB NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
 `;

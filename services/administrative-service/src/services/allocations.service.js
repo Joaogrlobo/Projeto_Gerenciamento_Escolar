@@ -4,6 +4,7 @@ const subjectsRepository = require('../repositories/subjects.repository');
 const teachersService = require('./teachers.service');
 const { BadRequestError, ConflictError, NotFoundError } = require('../errors/AppError');
 const { publishEvent } = require('../messaging/publisher');
+const { withTransaction } = require('../config/db');
 const { requireId, requireObject, requireText, requireTime } = require('./validation');
 
 const CONFLICT_MESSAGES = {
@@ -79,16 +80,17 @@ async function createAllocation(input, authorization) {
     await teachersService.ensureTeacher(item.teacher_id, authorization);
     const created = await allocationsRepository.withScheduleLock(async database => {
         await validateNoConflicts(item, database);
-        return allocationsRepository.create(item, database);
+        const allocation = await allocationsRepository.create(item, database);
+        const data = {
+            allocationId: allocation.id,
+            teacherId: allocation.teacher_id,
+            classId: allocation.class_id,
+            subjectId: allocation.subject_id
+        };
+        await publishEvent('teacher.assigned', data, database);
+        await publishEvent('schedule.updated', data, database);
+        return allocation;
     });
-    const data = {
-        allocationId: created.id,
-        teacherId: created.teacher_id,
-        classId: created.class_id,
-        subjectId: created.subject_id
-    };
-    await publishEvent('teacher.assigned', data);
-    await publishEvent('schedule.updated', data);
     return created;
 }
 
@@ -96,14 +98,15 @@ async function deleteAllocation(idValue) {
     const id = requireId(idValue, 'allocation id');
     const existing = await allocationsRepository.findById(id);
     if (!existing) throw new NotFoundError('alocação não encontrada');
-    await allocationsRepository.remove(id);
-    const data = {
-        allocationId: id,
-        teacherId: existing.teacher_id,
-        classId: existing.class_id,
-        change: 'deleted'
-    };
-    await publishEvent('schedule.updated', data);
+    await withTransaction(async client => {
+        await allocationsRepository.remove(id, client);
+        await publishEvent('schedule.updated', {
+            allocationId: id,
+            teacherId: existing.teacher_id,
+            classId: existing.class_id,
+            change: 'deleted'
+        }, client);
+    });
 }
 
 async function getTeacherSchedule(idValue, authorization) {

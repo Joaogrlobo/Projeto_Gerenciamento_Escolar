@@ -28,8 +28,8 @@ async function update(id, item) {
     return rows[0];
 }
 
-async function remove(id) {
-    return pool.query('DELETE FROM subjects WHERE id=$1', [id]);
+async function remove(id, database = pool) {
+    return database.query('DELETE FROM subjects WHERE id=$1', [id]);
 }
 
 module.exports = { list, findById, create, update, remove };

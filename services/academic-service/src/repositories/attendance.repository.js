@@ -1,30 +1,20 @@
 // Consultas parametrizadas para registros e resumos de frequência.
 const { pool } = require('../config/db');
 
-async function upsertMany(records) {
-    const client = await pool.connect();
-    try {
-        await client.query('BEGIN');
-        const rows = [];
-        for (const record of records) {
-            const result = await client.query(
-                `INSERT INTO academic_attendance (student_id, course_id, attendance_date, status)
-                 VALUES ($1, $2, $3, $4)
-                 ON CONFLICT (student_id, course_id, attendance_date)
-                 DO UPDATE SET status = EXCLUDED.status, updated_at = now()
-                 RETURNING *`,
-                [record.student_id, record.course_id ?? 0, record.attendance_date, record.status]
-            );
-            rows.push(result.rows[0]);
-        }
-        await client.query('COMMIT');
-        return rows;
-    } catch (error) {
-        await client.query('ROLLBACK');
-        throw error;
-    } finally {
-        client.release();
+async function upsertMany(records, client) {
+    const rows = [];
+    for (const record of records) {
+        const result = await client.query(
+            `INSERT INTO academic_attendance (student_id, course_id, attendance_date, status)
+             VALUES ($1, $2, $3, $4)
+             ON CONFLICT (student_id, course_id, attendance_date)
+             DO UPDATE SET status = EXCLUDED.status, updated_at = now()
+             RETURNING *`,
+            [record.student_id, record.course_id ?? 0, record.attendance_date, record.status]
+        );
+        rows.push(result.rows[0]);
     }
+    return rows;
 }
 
 async function list(filters = {}) {

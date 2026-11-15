@@ -5,6 +5,7 @@ const config = require('../config/env');
 const usersRepository = require('../repositories/users.repository');
 const { BadRequestError, UnauthorizedError } = require('../errors/AppError');
 const { publishEvent } = require('../messaging/publisher');
+const { withTransaction } = require('../config/db');
 
 const ROLES = ['admin', 'teacher', 'student', 'parent', 'staff'];
 const PUBLIC_ROLES = ['student', 'parent'];
@@ -17,9 +18,11 @@ async function createUser({ name, email, password, role }) {
         throw new BadRequestError('senha deve ter ao menos 6 caracteres');
     }
     const passwordHash = await bcrypt.hash(password, 10);
-    const user = await usersRepository.create({ name, email: email.toLowerCase(), passwordHash, role });
-    await publishEvent('user.registered', { userId: user.id, role: user.role });
-    return user;
+    return withTransaction(async client => {
+        const user = await usersRepository.create({ name, email: email.toLowerCase(), passwordHash, role }, client);
+        await publishEvent('user.registered', { userId: user.id, role: user.role }, client);
+        return user;
+    });
 }
 
 async function registerUser(user) {

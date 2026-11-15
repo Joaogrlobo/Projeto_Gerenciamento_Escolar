@@ -96,23 +96,24 @@ async function create(input, authorization) {
         if (status === 'active' && limit !== null && existingCount >= limit) {
             throw new ConflictError('limite de inscrições atingido');
         }
-        return repository.create({
+        const created = await repository.create({
             student_id: studentId,
             course_id: courseId,
             academic_year: academicYear,
             enrollment_date: enrollmentDate,
             status
         }, client);
+        await publishEvent('enrollment.created', {
+            enrollmentId: created.id,
+            studentId: created.student_id,
+            courseId: created.course_id,
+            academicYear: created.academic_year,
+            enrollmentDate: created.enrollment_date,
+            status: created.status
+        }, client);
+        return created;
     });
 
-    await publishEvent('enrollment.created', {
-        enrollmentId: enrollment.id,
-        studentId: enrollment.student_id,
-        courseId: enrollment.course_id,
-        academicYear: enrollment.academic_year,
-        enrollmentDate: enrollment.enrollment_date,
-        status: enrollment.status
-    });
     return enrollment;
 }
 
@@ -138,15 +139,16 @@ async function updateStatus(id, status, authorization) {
                 throw new ConflictError('limite de inscrições atingido');
             }
         }
-        return repository.updateStatus(id, status, client);
+        const changed = await repository.updateStatus(id, status, client);
+        await publishEvent('enrollment.status_changed', {
+            enrollmentId: changed.id,
+            studentId: changed.student_id,
+            courseId: changed.course_id,
+            status: changed.status
+        }, client);
+        return changed;
     });
 
-    await publishEvent('enrollment.status_changed', {
-        enrollmentId: updated.id,
-        studentId: updated.student_id,
-        courseId: updated.course_id,
-        status: updated.status
-    });
     return updated;
 }
 

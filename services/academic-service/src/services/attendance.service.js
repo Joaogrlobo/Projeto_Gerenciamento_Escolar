@@ -2,6 +2,7 @@
 const repository = require('../repositories/attendance.repository');
 const dependencies = require('../clients/dependencies.client');
 const { publishEvent } = require('../messaging/publisher');
+const { withTransaction } = require('../config/db');
 const { BadRequestError } = require('../errors/AppError');
 
 const VALID_STATUSES = new Set(['present', 'absent', 'late', 'excused']);
@@ -126,19 +127,22 @@ async function bulkUpsert(input, authorization) {
     if (courseId !== null) await dependencies.getCourse(courseId, authorization);
     await Promise.all([...new Set(studentIds.map(String))]
         .map(id => dependencies.getStudent(id, authorization)));
-    const saved = await repository.upsertMany(normalized);
-
-    await Promise.all(saved.map(record => publishEvent('attendance.recorded', {
-        attendanceId: record.id,
-        studentId: record.student_id,
-        courseId: record.course_id,
-        classId: record.course_id || null,
-        attendanceDate: record.attendance_date,
-        date: record.attendance_date,
-        status: record.status,
-        subject: input.subject
-    })));
-    return saved;
+    return withTransaction(async client => {
+        const saved = await repository.upsertMany(normalized, client);
+        for (const record of saved) {
+            await publishEvent('attendance.recorded', {
+                attendanceId: record.id,
+                studentId: record.student_id,
+                courseId: record.course_id,
+                classId: record.course_id || null,
+                attendanceDate: record.attendance_date,
+                date: record.attendance_date,
+                status: record.status,
+                subject: input.subject
+            }, client);
+        }
+        return saved;
+    });
 }
 
 async function summarizeStudent(studentId, filters, authorization) {

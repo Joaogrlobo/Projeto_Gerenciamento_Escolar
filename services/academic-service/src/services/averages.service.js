@@ -3,6 +3,7 @@ const { pool } = require('../config/db');
 const gradesRepository = require('../repositories/grades.repository');
 const dependencies = require('../clients/dependencies.client');
 const { BadRequestError } = require('../errors/AppError');
+const { publishEvent } = require('../messaging/publisher');
 
 async function getAverage(studentId, subject, authorization) {
     if (!/^\d+$/.test(String(studentId)) || Number(studentId) < 1 || Number(studentId) > 2147483647) {
@@ -30,7 +31,7 @@ async function getAverage(studentId, subject, authorization) {
 
 async function processGradeEvent(event) {
     if (!event || !event.id || !['grade.created', 'grade.posted', 'grade.updated', 'grade.deleted'].includes(event.type)) {
-        throw new Error('Evento de nota inválido');
+        throw new BadRequestError('Evento de nota inválido');
     }
     const data = event.data || {};
     const client = await pool.connect();
@@ -50,7 +51,7 @@ async function processGradeEvent(event) {
             : null;
         const studentId = grade ? grade.student_id : data.studentId;
         const subject = grade ? grade.subject : data.subject;
-        if (!studentId || !subject) throw new Error('Evento de nota sem aluno ou disciplina');
+        if (!studentId || !subject) throw new BadRequestError('Evento de nota sem aluno ou disciplina');
         const subjects = new Set([subject]);
         if (data.previousSubject) subjects.add(data.previousSubject);
         const results = [];
@@ -62,9 +63,8 @@ async function processGradeEvent(event) {
             const aggregate = await gradesRepository.calculateAverage(studentId, currentSubject, client);
             results.push(await gradesRepository.upsertAverage(studentId, currentSubject, aggregate, client));
         }
-        await client.query('COMMIT');
         const average = results.find(item => item.subject === subject);
-        return {
+        const calculated = {
             studentId: average.student_id,
             subject: average.subject,
             average: Number(average.average),
@@ -72,6 +72,9 @@ async function processGradeEvent(event) {
             gradeCount: Number(average.grade_count),
             sourceEventId: String(event.id)
         };
+        await publishEvent('average.calculated', calculated, client);
+        await client.query('COMMIT');
+        return calculated;
     } catch (error) {
         await client.query('ROLLBACK');
         throw error;

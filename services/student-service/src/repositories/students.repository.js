@@ -16,8 +16,8 @@ async function findById(id) {
     return rows[0];
 }
 
-async function create(student) {
-    const { rows } = await pool.query(
+async function create(student, database = pool) {
+    const { rows } = await database.query(
         `INSERT INTO students(registration,name,birth_date,address,contact,class_name)
          VALUES($1,$2,$3,$4,$5,$6) RETURNING *`,
         [student.registration, student.name, student.birth_date, student.address, student.contact, student.class_name]
@@ -25,8 +25,8 @@ async function create(student) {
     return rows[0];
 }
 
-async function update(id, student) {
-    const { rows } = await pool.query(
+async function update(id, student, database = pool) {
+    const { rows } = await database.query(
         `UPDATE students SET
          name=COALESCE($1,name), birth_date=COALESCE($2,birth_date),
          address=COALESCE($3,address), contact=COALESCE($4,contact),
@@ -37,8 +37,8 @@ async function update(id, student) {
     return rows[0];
 }
 
-async function remove(id) {
-    return pool.query('DELETE FROM students WHERE id=$1', [id]);
+async function remove(id, database = pool) {
+    return database.query('DELETE FROM students WHERE id=$1', [id]);
 }
 
 module.exports = { list, findById, create, update, remove };

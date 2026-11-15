@@ -82,8 +82,8 @@ async function withScheduleLock(operation) {
     }
 }
 
-async function remove(id) {
-    return pool.query('DELETE FROM allocations WHERE id=$1', [id]);
+async function remove(id, database = pool) {
+    return database.query('DELETE FROM allocations WHERE id=$1', [id]);
 }
 
 async function teacherSchedule(teacherId) {

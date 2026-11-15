@@ -1,8 +1,8 @@
 // Persistência SQL parametrizada de usuários.
 const { pool } = require('../config/db');
 
-async function create({ name, email, passwordHash, role }) {
-    const { rows } = await pool.query(
+async function create({ name, email, passwordHash, role }, database = pool) {
+    const { rows } = await database.query(
         'INSERT INTO users(name,email,password_hash,role) VALUES($1,$2,$3,$4) RETURNING id,name,email,role',
         [name, email, passwordHash, role]
     );

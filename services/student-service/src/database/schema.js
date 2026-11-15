@@ -9,4 +9,12 @@ module.exports = `CREATE TABLE IF NOT EXISTS students (
   class_name VARCHAR(60),
   active BOOLEAN DEFAULT true,
   created_at TIMESTAMPTZ DEFAULT now()
-)`;
+);
+
+CREATE TABLE IF NOT EXISTS outbox_events (
+  id BIGSERIAL PRIMARY KEY,
+  event_id UUID UNIQUE NOT NULL,
+  type TEXT NOT NULL,
+  envelope JSONB NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);`;
