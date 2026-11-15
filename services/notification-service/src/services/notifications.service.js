@@ -1,6 +1,7 @@
 // Regras para formar e consultar notificações de eventos.
 const notificationsRepository = require('../repositories/notifications.repository');
 const { BadRequestError } = require('../errors/AppError');
+const { rolesFor } = require('./audience');
 
 function firstValue(data, ...keys) {
     for (const key of keys) {
@@ -30,6 +31,30 @@ function formatMessage(type, data) {
             const attendance = absent ? 'ausente' : 'presente';
             return `Frequência registrada: aluno ${subject(data, 'studentName', 'student_name', 'studentId', 'student_id')} ${attendance}`;
         }
+        case 'student.updated':
+            return `Aluno atualizado: ${subject(data, 'registration', 'studentId', 'student_id')}`;
+        case 'student.deleted':
+            return `Aluno removido: ${subject(data, 'registration', 'studentId', 'student_id')}`;
+        case 'employee.created':
+            return `Funcionário cadastrado: ${subject(data, 'name', 'employeeId', 'employee_id')}`;
+        case 'employee.updated':
+            return `Funcionário atualizado: ${subject(data, 'name', 'employeeId', 'employee_id')}`;
+        case 'employee.deleted':
+            return `Funcionário removido: ${subject(data, 'name', 'employeeId', 'employee_id')}`;
+        case 'user.registered':
+            return `Novo usuário cadastrado: ${subject(data, 'role')}`;
+        case 'grade.updated':
+            return `Nota alterada: aluno ${subject(data, 'studentId', 'student_id')} — ${subject(data, 'subject')}: ${subject(data, 'grade', 'score', 'value')}`;
+        case 'grade.deleted':
+            return `Nota removida: aluno ${subject(data, 'studentId', 'student_id')} — ${subject(data, 'subject')}`;
+        case 'average.calculated':
+            return `Média atualizada: aluno ${subject(data, 'studentId', 'student_id')} — ${subject(data, 'subject')}: ${subject(data, 'average')}`;
+        case 'enrollment.status_changed':
+            return `Matrícula do aluno ${subject(data, 'studentId', 'student_id')} alterada: ${subject(data, 'status')}`;
+        case 'class.created':
+            return `Turma criada: ${subject(data, 'name', 'classId', 'class_id')}`;
+        case 'schedule.updated':
+            return `Horários atualizados: ${subject(data, 'change', 'classId', 'allocationId', 'subjectId')}`;
         case 'teacher.assigned':
             return `Professor ${subject(data, 'teacherName', 'teacher_name', 'teacherId', 'teacher_id')} atribuído a ${subject(data, 'courseName', 'course_name', 'className', 'class_name', 'classId', 'class_id', 'courseId', 'course_id')}`;
         default:
@@ -53,11 +78,12 @@ async function recordEvent(event) {
         type: event.type,
         message: formatMessage(event.type, payload),
         payload,
-        occurredAt: event.occurredAt || event.occurred_at || null
+        occurredAt: event.occurredAt || event.occurred_at || null,
+        audience: rolesFor(event.type)
     });
 }
 
-async function listNotifications(type, limit) {
+async function listNotifications(type, limit, role) {
     let parsedLimit = 50;
     if (limit !== undefined) {
         parsedLimit = Number(limit);
@@ -65,7 +91,15 @@ async function listNotifications(type, limit) {
             throw new BadRequestError('limit deve ser um inteiro entre 1 e 200');
         }
     }
-    return notificationsRepository.list(type || null, Math.min(parsedLimit, 200));
+    return notificationsRepository.list(type || null, Math.min(parsedLimit, 200), role);
 }
 
-module.exports = { recordEvent, listNotifications, formatMessage };
+function countUnread(user) {
+    return notificationsRepository.countUnread(user.role, Number(user.sub));
+}
+
+function markSeen(user) {
+    return notificationsRepository.markSeen(Number(user.sub));
+}
+
+module.exports = { recordEvent, listNotifications, countUnread, markSeen, formatMessage };

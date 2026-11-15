@@ -39,6 +39,9 @@ O DistriSchool é um sistema distribuído de gestão escolar. Os serviços de us
 - **RF20:** verificar que uma criação administrativa não falha quando RabbitMQ está parado, restaurar o broker e observar uma segunda notificação após reconexão.
 - **RF21:** aplicar rate limit ao login como último caso do smoke test e aguardar a janela liberar uma nova autenticação.
 - **RF22:** executar smoke test com `BaseUrl`, dados únicos, relatório `PASS`/`FAIL` com status HTTP, limpeza dos registros gerados mesmo em falha e código de saída não zero quando houver falhas.
+- **RF23:** entregar notificações em tempo real por WebSocket aos perfis `admin`, `staff` e `teacher`, conforme o público de cada tipo de evento.
+- **RF24:** informar a quantidade de notificações não lidas por usuário e permitir marcá-las como vistas.
+- **RF25:** executar teste de caos em `scripts/chaos-test.sh` com relatório `PASS`/`FAIL` e religamento do que foi parado.
 
 ## Contratos de rota e perfis
 
@@ -49,7 +52,7 @@ Os endpoints de cliente estão sob `/api` e passam pelo gateway. As únicas exce
 - funcionários: `/api/employees` e `/api/employees/:id`;
 - administração: `/api/administrative/classes`, `/api/administrative/subjects`, `/api/administrative/allocations` e `/api/administrative/teachers/:teacherId/schedule`;
 - acadêmico: `/api/academic/enrollments`, `/api/academic/grades`, `/api/academic/attendance`, `/api/academic/attendance/summary` e `/api/academic/students/:id/{average,attendance}`;
-- notificações: `GET /api/notifications` para `admin`.
+- notificações: `GET /api/notifications`, `GET /api/notifications/unread-count` e `POST /api/notifications/seen` para `admin`, `staff` e `teacher`.
 
 Verbos HTTP e papéis permitidos por operação estão na [tabela completa da API](api.md). Esta especificação documental não inventa ou reproduz campos de requisição/resposta; esses formatos pertencem aos contratos de cada serviço.
 
@@ -60,7 +63,7 @@ Verbos HTTP e papéis permitidos por operação estão na [tabela completa da AP
 - **RNF03 — Gateway:** clientes usam o gateway publicado, não portas internas de serviços.
 - **RNF04 — Conflitos:** falhas de unicidade/agenda/capacidade devem ser informadas com status apropriado, sem detalhes de banco.
 - **RNF05 — Assincronia:** média e notificações devem ser consultáveis por polling sem bloquear a operação produtora por todo o processamento.
-- **RNF06 — Resiliência:** Compose aguarda RabbitMQ saudável na inicialização; esse requisito não implica disponibilidade contínua durante execução.
+- **RNF06 — Resiliência:** chamadas entre serviços usam até 3 tentativas e Circuit Breaker; o gateway mantém um Circuit Breaker por serviço; eventos são gravados em outbox na transação do dado; consumidores usam retry e DLQ.
 - **RNF07 — Limpeza:** smoke test deve remover só registros gerados no próprio run e não purgar filas/dados preexistentes.
 
 ## Limitações de limpeza e execução

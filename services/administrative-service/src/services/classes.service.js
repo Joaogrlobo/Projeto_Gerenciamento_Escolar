@@ -1,6 +1,7 @@
 const repository = require('../repositories/classes.repository');
 const { BadRequestError, NotFoundError } = require('../errors/AppError');
 const { publishEvent } = require('../messaging/publisher');
+const { withTransaction } = require('../config/db');
 const { requireObject, requireId, requireText } = require('./validation');
 
 const SHIFTS = ['morning', 'afternoon', 'evening'];
@@ -48,9 +49,12 @@ async function getClass(idValue) {
 }
 
 async function createClass(input) {
-    const created = await repository.create(validateClass(input));
-    await publishEvent('class.created', { classId: created.id });
-    return created;
+    const item = validateClass(input);
+    return withTransaction(async client => {
+        const created = await repository.create(item, client);
+        await publishEvent('class.created', { classId: created.id }, client);
+        return created;
+    });
 }
 
 async function updateClass(idValue, input) {
@@ -63,9 +67,11 @@ async function updateClass(idValue, input) {
 
 async function deleteClass(idValue) {
     const id = requireId(idValue);
-    const result = await repository.remove(id);
-    if (!result.rowCount) throw new NotFoundError('turma não encontrada');
-    await publishEvent('schedule.updated', { classId: id, change: 'class.deleted' });
+    await withTransaction(async client => {
+        const result = await repository.remove(id, client);
+        if (!result.rowCount) throw new NotFoundError('turma não encontrada');
+        await publishEvent('schedule.updated', { classId: id, change: 'class.deleted' }, client);
+    });
 }
 
 async function getSchedule(idValue) {

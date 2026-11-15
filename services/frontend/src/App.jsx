@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, Navigate, NavLink, Route, Routes, useLocation } from 'react-router-dom';
 import { useAuth } from './auth/AuthContext';
+import { canSeeNotifications, useNotifications } from './realtime/NotificationsProvider';
 import { CrudPage } from './components/CrudPage';
 import { AttendancePage, AllocationsPage, EnrollmentsPage, GradesPage, NotificationsPage } from './pages/AcademicPages';
 import { LoginPage, RegisterPage } from './pages/AuthPages';
@@ -39,6 +40,7 @@ function Protected({ children, admin = false }) {
 
 function Sidebar() {
   const { user, displayName, isAdmin, logout } = useAuth();
+  const { unread } = useNotifications();
   const [open, setOpen] = useState(false);
   const role = user?.role || 'Usuário';
   const links = [
@@ -49,11 +51,11 @@ function Sidebar() {
     { to: '/grades', label: 'Notas', icon: '✳' },
     { to: '/attendance', label: 'Frequência', icon: '◷' },
     { to: '/allocations', label: 'Alocações', icon: '▦' },
+    ...(canSeeNotifications(user) ? [{ to: '/notifications', label: 'Notificações', icon: '♢', badge: unread }] : []),
     ...(isAdmin ? [
       { to: '/classes', label: 'Turmas', icon: '▣' },
       { to: '/subjects', label: 'Disciplinas', icon: '▧' },
       { to: '/users', label: 'Usuários', icon: '♙' },
-      { to: '/notifications', label: 'Notificações', icon: '♢' },
     ] : []),
   ];
   return <>
@@ -62,7 +64,7 @@ function Sidebar() {
     <aside className={`sidebar ${open ? 'sidebar-open' : ''}`}>
       <Link to="/" className="brand" onClick={() => setOpen(false)}><span className="brand-mark">DE</span><span>Distrito<span className="brand-light">Escolar</span></span></Link>
       <div className="menu-caption">MENU PRINCIPAL</div>
-      <nav className="menu">{links.map((link) => <NavLink key={link.to} end={link.to === '/'} to={link.to} onClick={() => setOpen(false)} className={({ isActive }) => `menu-link${isActive ? ' active' : ''}`}><span className="menu-icon">{link.icon}</span>{link.label}</NavLink>)}</nav>
+      <nav className="menu">{links.map((link) => <NavLink key={link.to} end={link.to === '/'} to={link.to} onClick={() => setOpen(false)} className={({ isActive }) => `menu-link${isActive ? ' active' : ''}`}><span className="menu-icon">{link.icon}</span>{link.label}{link.badge > 0 && <span className="menu-badge">{link.badge > 99 ? '99+' : link.badge}</span>}</NavLink>)}</nav>
       <div className="sidebar-bottom">
         <div className="profile-block"><span className="avatar">{displayName.slice(0, 1).toUpperCase()}</span><div className="profile-text"><strong>{displayName}</strong><span>{role}</span></div></div>
         <button className="logout-button" onClick={logout} type="button"><span>↪</span>Sair</button>
@@ -77,6 +79,11 @@ function Shell({ children }) {
 
 function Page({ children, admin = false }) {
   return <Protected admin={admin}><Shell>{children}</Shell></Protected>;
+}
+
+function NotificationsRoute() {
+  const { user } = useAuth();
+  return canSeeNotifications(user) ? <NotificationsPage /> : <Navigate to="/" replace />;
 }
 
 function StudentsPage() {
@@ -121,7 +128,7 @@ export default function App() {
     <Route path="/enrollments" element={<Page><EnrollmentsPage /></Page>} />
     <Route path="/grades" element={<Page><GradesPage /></Page>} />
     <Route path="/attendance" element={<Page><AttendancePage /></Page>} />
-    <Route path="/notifications" element={<Page admin><NotificationsPage /></Page>} />
+    <Route path="/notifications" element={<Page><NotificationsRoute /></Page>} />
     <Route path="*" element={<Navigate to="/" replace />} />
   </Routes>;
 }

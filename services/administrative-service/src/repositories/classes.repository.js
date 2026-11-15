@@ -10,8 +10,8 @@ async function findById(id) {
     return rows[0];
 }
 
-async function create(item) {
-    const { rows } = await pool.query(
+async function create(item, database = pool) {
+    const { rows } = await database.query(
         `INSERT INTO classes(name, school_year, shift, capacity, active)
          VALUES($1,$2,$3,$4,COALESCE($5,true)) RETURNING *`,
         [item.name, item.school_year, item.shift, item.capacity, item.active]
@@ -30,8 +30,8 @@ async function update(id, item) {
     return rows[0];
 }
 
-async function remove(id) {
-    return pool.query('DELETE FROM classes WHERE id=$1', [id]);
+async function remove(id, database = pool) {
+    return database.query('DELETE FROM classes WHERE id=$1', [id]);
 }
 
 async function schedule(id) {

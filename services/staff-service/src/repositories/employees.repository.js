@@ -17,8 +17,8 @@ async function findById(id) {
     return rows[0];
 }
 
-async function create(employee) {
-    const { rows } = await pool.query(
+async function create(employee, database = pool) {
+    const { rows } = await database.query(
         `INSERT INTO employees(type,name,email,phone,qualification,subjects,position)
          VALUES($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
         [employee.type, employee.name, employee.email, employee.phone, employee.qualification, employee.subjects, employee.position]
@@ -26,8 +26,8 @@ async function create(employee) {
     return rows[0];
 }
 
-async function update(id, employee) {
-    const { rows } = await pool.query(
+async function update(id, employee, database = pool) {
+    const { rows } = await database.query(
         `UPDATE employees SET
          name=COALESCE($1,name), phone=COALESCE($2,phone),
          qualification=COALESCE($3,qualification), subjects=COALESCE($4,subjects),
@@ -38,8 +38,8 @@ async function update(id, employee) {
     return rows[0];
 }
 
-async function remove(id) {
-    return pool.query('DELETE FROM employees WHERE id=$1', [id]);
+async function remove(id, database = pool) {
+    return database.query('DELETE FROM employees WHERE id=$1', [id]);
 }
 
 module.exports = { list, findById, create, update, remove };

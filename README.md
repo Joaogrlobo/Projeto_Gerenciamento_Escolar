@@ -51,7 +51,7 @@ Os manifests em `k8s/` cobrem PostgreSQL, RabbitMQ e os oito serviços de aplica
 ```powershell
 $services = @('user-service', 'student-service', 'staff-service', 'academic-service', 'administrative-service', 'notification-service', 'api-gateway', 'frontend')
 foreach ($service in $services) {
-    minikube image build -t "distrischool/$service`:0.2" "services\$service"
+    minikube image build -t "distrischool/$service`:0.3" "services\$service"
 }
 kubectl apply -f k8s/
 ```
@@ -67,6 +67,29 @@ Com o ambiente ativo e `.env` presente na pasta atual:
 ```
 
 O script lê credenciais diretamente de `.env` sem mostrá-las, usa identificadores únicos, imprime um resultado `PASS`/`FAIL` com status HTTP, tenta remover os registros que criou e termina com código diferente de zero em caso de falha. A limitação de requisições é verificada por último e o script aguarda até a janela liberar um login válido. A validação de resiliência interrompe temporariamente o RabbitMQ e o reinicia ao final do caso. Os contratos e limitações conhecidas estão documentados em [docs/api.md](docs/api.md).
+
+## Teste de caos
+
+Com o ambiente ativo, o script derruba serviços de propósito e confere a recuperação. Use apenas em ambiente local:
+
+```bash
+bash scripts/chaos-test.sh
+```
+
+Ele cobre a configuração das filas, a abertura e o fechamento do Circuit Breaker, o envio de eventos após uma queda do RabbitMQ, a retenção de mensagens com o serviço de notificações parado e o desvio de mensagens inválidas para a DLQ. Imprime `PASS`/`FAIL`, religa o que parou e remove os dados que criou. A mensagem inválida do último caso permanece na DLQ.
+
+## Atualizando um ambiente já existente
+
+As filas `notification.events` e `academic.grade-average` mudaram de configuração. O RabbitMQ recusa redeclarar uma fila durável com argumentos diferentes, então remova as antigas uma única vez. Mensagens ainda na fila são perdidas:
+
+```bash
+docker compose stop notification-service academic-service
+docker compose exec rabbitmq rabbitmqctl delete_queue notification.events
+docker compose exec rabbitmq rabbitmqctl delete_queue academic.grade-average
+docker compose up -d --build
+```
+
+Depois de `git pull`, sempre suba com `--build`; sem ele, o Docker reaproveita as imagens antigas. No Kubernetes, execute os mesmos `delete_queue` com `kubectl -n distrischool exec deployment/rabbitmq --`, depois de atualizar as imagens para a tag `0.3`.
 
 ## Documentação
 
@@ -113,5 +136,5 @@ Cada serviço de domínio mantém seu próprio banco de dados e expõe endpoints
 ## Roadmap
 
 - **Entrega 2 (E2):** API Gateway, serviços acadêmico e administrativo, mensageria RabbitMQ, notificações e frontend básico.
-- **Entrega 3 (E3):** Circuit Breaker, resiliência a falhas, retentativas e notificações assíncronas robustas.
+- **Entrega 3 (E3, implementada):** Circuit Breaker, retentativas, outbox transacional, DLQ e notificações em tempo real por WebSocket.
 - **Entrega 4 (E4):** CI/CD com GitHub Actions, monitoramento Prometheus/Grafana, testes de carga, documentação final e vídeo de apresentação.

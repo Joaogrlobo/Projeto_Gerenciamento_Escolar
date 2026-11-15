@@ -35,4 +35,12 @@ CREATE INDEX IF NOT EXISTS allocations_teacher_schedule_idx
   ON allocations(teacher_id, weekday);
 CREATE INDEX IF NOT EXISTS allocations_room_schedule_idx
   ON allocations(room, weekday);
+
+CREATE TABLE IF NOT EXISTS outbox_events (
+  id BIGSERIAL PRIMARY KEY,
+  event_id UUID UNIQUE NOT NULL,
+  type TEXT NOT NULL,
+  envelope JSONB NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
 `;

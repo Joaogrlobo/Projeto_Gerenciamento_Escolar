@@ -2,6 +2,7 @@ const repository = require('../repositories/subjects.repository');
 const { BadRequestError, NotFoundError } = require('../errors/AppError');
 const { requireId, requireObject, requireText } = require('./validation');
 const { publishEvent } = require('../messaging/publisher');
+const { withTransaction } = require('../config/db');
 
 function validateSubject(input, partial = false) {
     requireObject(input);
@@ -43,9 +44,11 @@ async function updateSubject(idValue, input) {
 
 async function deleteSubject(idValue) {
     const id = requireId(idValue);
-    const result = await repository.remove(id);
-    if (!result.rowCount) throw new NotFoundError('disciplina não encontrada');
-    await publishEvent('schedule.updated', { subjectId: id, change: 'subject.deleted' });
+    await withTransaction(async client => {
+        const result = await repository.remove(id, client);
+        if (!result.rowCount) throw new NotFoundError('disciplina não encontrada');
+        await publishEvent('schedule.updated', { subjectId: id, change: 'subject.deleted' }, client);
+    });
 }
 
 module.exports = {

@@ -3,11 +3,13 @@ const app = require('./app');
 const config = require('./config/env');
 const { init, pool } = require('./config/db');
 const schema = require('./database/schema');
-const { connect } = require('./messaging/rabbit');
+const { connect, publish } = require('./messaging/rabbit');
+const { createRelay } = require('./messaging/relay');
 
 async function start() {
     await init(schema);
     connect();
+    createRelay({ pool, publish }).start();
     const server = app.listen(config.port, () => {
         console.log(`academic-service na porta ${config.port}`);
     });

@@ -17,4 +17,23 @@ async function init(sql, tentativas = 10) {
     throw new Error('Banco indisponível');
 }
 
-module.exports = { pool, init };
+async function withTransaction(operation) {
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+        const result = await operation(client);
+        await client.query('COMMIT');
+        return result;
+    } catch (error) {
+        try {
+            await client.query('ROLLBACK');
+        } catch {
+            // Uma conexão perdida já descarta a transação.
+        }
+        throw error;
+    } finally {
+        client.release();
+    }
+}
+
+module.exports = { pool, init, withTransaction };

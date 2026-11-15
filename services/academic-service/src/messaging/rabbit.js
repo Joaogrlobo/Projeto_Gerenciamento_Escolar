@@ -1,10 +1,12 @@
 // Conexão resiliente, publicação de eventos e worker de médias ponderadas.
 const amqp = require('amqplib');
 const config = require('../config/env');
-const { processGradeEvent } = require('../services/averages.service');
+const { handleGradeMessage, RETRY_QUEUE } = require('./consumer');
 
 const EXCHANGE = 'distrischool.events';
 const QUEUE = 'academic.grade-average';
+const DEAD_LETTER_EXCHANGE = 'distrischool.dlx';
+const DEAD_LETTER_QUEUE = 'distrischool.dlq';
 let connection;
 let publisherChannel;
 let consumerChannel;
@@ -28,26 +30,6 @@ function handleConnectionClose(current) {
     scheduleReconnect();
 }
 
-async function consume(message, channel) {
-    if (!message || !channel) return;
-    try {
-        const event = JSON.parse(message.content.toString('utf8'));
-        const result = await processGradeEvent(event);
-        channel.ack(message);
-        if (result) {
-            const { publishEvent } = require('./publisher');
-            await publishEvent('average.calculated', result);
-        }
-    } catch (error) {
-        console.error('Falha ao processar evento de nota:', error.message);
-        try {
-            channel.nack(message, false, false);
-        } catch {
-            return;
-        }
-    }
-}
-
 async function connect() {
     if (connection || connecting || !config.rabbitmqUrl) {
         if (!config.rabbitmqUrl) console.error('RABBITMQ_URL não configurada');
@@ -67,8 +49,17 @@ async function connect() {
 
         const nextConsumer = await nextConnection.createChannel();
         await nextConsumer.assertExchange(EXCHANGE, 'topic', { durable: true });
-        await nextConsumer.assertQueue(QUEUE, { durable: true });
+        await nextConsumer.assertExchange(DEAD_LETTER_EXCHANGE, 'topic', { durable: true });
+        await nextConsumer.assertQueue(DEAD_LETTER_QUEUE, { durable: true });
+        await nextConsumer.bindQueue(DEAD_LETTER_QUEUE, DEAD_LETTER_EXCHANGE, '#');
+        await nextConsumer.assertQueue(QUEUE, { durable: true, deadLetterExchange: DEAD_LETTER_EXCHANGE });
         await nextConsumer.bindQueue(QUEUE, EXCHANGE, 'grade.*');
+        await nextConsumer.assertQueue(RETRY_QUEUE, {
+            durable: true,
+            messageTtl: 5000,
+            deadLetterExchange: '',
+            deadLetterRoutingKey: QUEUE
+        });
         await nextConsumer.prefetch(10);
         nextConsumer.on('error', error => console.error('RabbitMQ consumer channel error:', error.message));
         nextConsumer.on('close', () => {
@@ -78,7 +69,7 @@ async function connect() {
         connection = nextConnection;
         publisherChannel = nextPublisher;
         consumerChannel = nextConsumer;
-        await nextConsumer.consume(QUEUE, message => consume(message, nextConsumer), { noAck: false });
+        await nextConsumer.consume(QUEUE, message => handleGradeMessage(nextConsumer, message), { noAck: false });
         console.log('RabbitMQ conectado (academic-service)');
     } catch (error) {
         console.error('RabbitMQ indisponível (academic-service):', error.message);

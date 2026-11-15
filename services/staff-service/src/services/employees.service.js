@@ -2,6 +2,7 @@
 const employeesRepository = require('../repositories/employees.repository');
 const { BadRequestError, NotFoundError } = require('../errors/AppError');
 const { publishEvent } = require('../messaging/publisher');
+const { withTransaction } = require('../config/db');
 
 const TYPES = ['teacher', 'admin_staff'];
 
@@ -20,22 +21,28 @@ async function createEmployee(employee) {
     if (!TYPES.includes(type) || !name || !email) {
         throw new BadRequestError('type (teacher|admin_staff), name e email são obrigatórios');
     }
-    const created = await employeesRepository.create({ ...employee, email: email.toLowerCase() });
-    await publishEvent('employee.created', { employeeId: created.id, type: created.type });
-    return created;
+    return withTransaction(async client => {
+        const created = await employeesRepository.create({ ...employee, email: email.toLowerCase() }, client);
+        await publishEvent('employee.created', { employeeId: created.id, type: created.type }, client);
+        return created;
+    });
 }
 
 async function updateEmployee(id, employee) {
-    const updated = await employeesRepository.update(id, employee);
-    if (!updated) throw new NotFoundError('funcionário não encontrado');
-    await publishEvent('employee.updated', { employeeId: updated.id, type: updated.type });
-    return updated;
+    return withTransaction(async client => {
+        const updated = await employeesRepository.update(id, employee, client);
+        if (!updated) throw new NotFoundError('funcionário não encontrado');
+        await publishEvent('employee.updated', { employeeId: updated.id, type: updated.type }, client);
+        return updated;
+    });
 }
 
 async function deleteEmployee(id) {
-    const result = await employeesRepository.remove(id);
-    if (!result.rowCount) throw new NotFoundError('funcionário não encontrado');
-    await publishEvent('employee.deleted', { employeeId: id });
+    await withTransaction(async client => {
+        const result = await employeesRepository.remove(id, client);
+        if (!result.rowCount) throw new NotFoundError('funcionário não encontrado');
+        await publishEvent('employee.deleted', { employeeId: id }, client);
+    });
 }
 
 module.exports = { listEmployees, getEmployee, createEmployee, updateEmployee, deleteEmployee };

@@ -9,7 +9,7 @@ spec:
     spec:
       containers:
         - name: user-service
-          image: distrischool/user-service:0.2
+          image: distrischool/user-service:0.3
           imagePullPolicy: Never
           ports: [{ containerPort: 3001 }]
           env:

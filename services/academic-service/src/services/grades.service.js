@@ -3,6 +3,7 @@ const repository = require('../repositories/grades.repository');
 const enrollments = require('../repositories/enrollments.repository');
 const dependencies = require('../clients/dependencies.client');
 const { publishEvent } = require('../messaging/publisher');
+const { withTransaction } = require('../config/db');
 const { BadRequestError, NotFoundError, ConflictError } = require('../errors/AppError');
 
 function positiveInteger(value) {
@@ -84,23 +85,25 @@ async function create(input, authorization) {
     if (requestedCourseId !== undefined) {
         await dependencies.getCourse(courseId, authorization);
     }
-    const grade = await repository.create({
-        ...fields,
-        enrollment_id: enrollment?.id ?? null,
-        student_id: studentId,
-        course_id: courseId
+    return withTransaction(async client => {
+        const grade = await repository.create({
+            ...fields,
+            enrollment_id: enrollment?.id ?? null,
+            student_id: studentId,
+            course_id: courseId
+        }, client);
+        await publishEvent('grade.posted', {
+            gradeId: grade.id,
+            enrollmentId: grade.enrollment_id,
+            studentId: grade.student_id,
+            courseId: grade.course_id,
+            subject: grade.subject,
+            value: grade.value,
+            score: grade.value,
+            weight: grade.weight
+        }, client);
+        return grade;
     });
-    await publishEvent('grade.posted', {
-        gradeId: grade.id,
-        enrollmentId: grade.enrollment_id,
-        studentId: grade.student_id,
-        courseId: grade.course_id,
-        subject: grade.subject,
-        value: grade.value,
-        score: grade.value,
-        weight: grade.weight
-    });
-    return grade;
 }
 
 async function update(id, input) {
@@ -113,34 +116,38 @@ async function update(id, input) {
         value: input.value ?? input.score ?? current.value,
         weight: input.weight ?? current.weight
     });
-    const grade = await repository.update(id, fields);
-    if (!grade) throw new NotFoundError('nota não encontrada');
-    await publishEvent('grade.updated', {
-        gradeId: grade.id,
-        enrollmentId: grade.enrollment_id,
-        studentId: grade.student_id,
-        courseId: grade.course_id,
-        previousSubject: current.subject,
-        subject: grade.subject,
-        value: grade.value,
-        score: grade.value,
-        weight: grade.weight
+    return withTransaction(async client => {
+        const grade = await repository.update(id, fields, client);
+        if (!grade) throw new NotFoundError('nota não encontrada');
+        await publishEvent('grade.updated', {
+            gradeId: grade.id,
+            enrollmentId: grade.enrollment_id,
+            studentId: grade.student_id,
+            courseId: grade.course_id,
+            previousSubject: current.subject,
+            subject: grade.subject,
+            value: grade.value,
+            score: grade.value,
+            weight: grade.weight
+        }, client);
+        return grade;
     });
-    return grade;
 }
 
 async function remove(id) {
     if (!positiveInteger(id)) throw new BadRequestError('id de nota inválido');
-    const grade = await repository.remove(id);
-    if (!grade) throw new NotFoundError('nota não encontrada');
-    await publishEvent('grade.deleted', {
-        gradeId: grade.id,
-        enrollmentId: grade.enrollment_id,
-        studentId: grade.student_id,
-        courseId: grade.course_id,
-        subject: grade.subject
+    return withTransaction(async client => {
+        const grade = await repository.remove(id, client);
+        if (!grade) throw new NotFoundError('nota não encontrada');
+        await publishEvent('grade.deleted', {
+            gradeId: grade.id,
+            enrollmentId: grade.enrollment_id,
+            studentId: grade.student_id,
+            courseId: grade.course_id,
+            subject: grade.subject
+        }, client);
+        return grade;
     });
-    return grade;
 }
 
 module.exports = { list, get, create, update, remove };
