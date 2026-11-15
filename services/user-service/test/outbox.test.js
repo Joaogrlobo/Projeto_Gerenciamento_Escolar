@@ -1,10 +1,11 @@
 // Testes da outbox: gravação transacional e relay de eventos.
+// Definido antes de qualquer require: config/env lê o ambiente uma única vez.
+process.env.JWT_SECRET = 'test';
 const assert = require('node:assert/strict');
 const test = require('node:test');
 const { pool } = require('../src/config/db');
 const { publishEvent } = require('../src/messaging/publisher');
 const { createRelay } = require('../src/messaging/relay');
-process.env.JWT_SECRET = 'test';
 const service = require('../src/services/users.service');
 
 function relayClient(rows, overrides = {}) {

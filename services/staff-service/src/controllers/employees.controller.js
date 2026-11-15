@@ -10,11 +10,11 @@ async function get(req, res) {
 }
 
 async function create(req, res) {
-    res.status(201).json(await employeesService.createEmployee(req.body));
+    res.status(201).json(await employeesService.createEmployee(req.body ?? {}));
 }
 
 async function update(req, res) {
-    res.json(await employeesService.updateEmployee(req.params.id, req.body));
+    res.json(await employeesService.updateEmployee(req.params.id, req.body ?? {}));
 }
 
 async function remove(req, res) {
