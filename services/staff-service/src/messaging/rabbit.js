@@ -18,11 +18,18 @@ function scheduleReconnect() {
     retryTimer.unref();
 }
 
+function closeQuietly(target) {
+    target?.close().catch(() => {
+        // A conexão já pode ter sido encerrada pelo broker.
+    });
+}
+
 async function connect() {
     if (connection || connecting) return;
     connecting = true;
+    let nextConnection;
     try {
-        const nextConnection = await amqp.connect(config.rabbitmqUrl);
+        nextConnection = await amqp.connect(config.rabbitmqUrl);
         const nextChannel = await nextConnection.createConfirmChannel();
         await nextChannel.assertExchange(EXCHANGE, 'topic', { durable: true });
         await nextChannel.assertExchange(DEAD_LETTER_EXCHANGE, 'topic', { durable: true });
@@ -37,9 +44,16 @@ async function connect() {
             scheduleReconnect();
         });
         nextChannel.on('error', error => console.error('RabbitMQ channel error:', error.message));
+        // Se só o canal cair, fecha a conexão para que o evento 'close' acima reconecte tudo.
+        nextChannel.on('close', () => {
+            if (channel !== nextChannel) return;
+            channel = null;
+            closeQuietly(nextConnection);
+        });
         console.log('RabbitMQ conectado (staff-service)');
     } catch (error) {
         console.error('RabbitMQ indisponível (staff-service):', error.message);
+        if (nextConnection && connection !== nextConnection) closeQuietly(nextConnection);
         scheduleReconnect();
     } finally {
         connecting = false;

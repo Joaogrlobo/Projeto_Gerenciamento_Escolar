@@ -3,6 +3,7 @@ const { Pool } = require('pg');
 const config = require('./env');
 
 const pool = new Pool({ connectionString: config.databaseUrl });
+pool.on('error', error => console.error('Erro inesperado no pool PostgreSQL:', error.message));
 
 async function init(sql, tentativas = 10) {
     for (let i = 1; i <= tentativas; i++) {
