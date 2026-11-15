@@ -12,6 +12,10 @@ function positiveInteger(value) {
         && Number(value) <= 2147483647;
 }
 
+function nonEmpty(value) {
+    return typeof value === 'string' && !value.trim() ? undefined : value;
+}
+
 function validateGrade(input) {
     const candidateSubject = input.subject ?? input.assessment;
     const rawSubject = typeof candidateSubject === 'string' && !candidateSubject.trim()
@@ -112,7 +116,8 @@ async function update(id, input) {
     if (!current) throw new NotFoundError('nota não encontrada');
     const fields = validateGrade({
         ...input,
-        subject: input.subject ?? input.assessment ?? current.subject,
+        // Texto vazio vindo do formulário não deve apagar a disciplina já gravada.
+        subject: nonEmpty(input.subject) ?? nonEmpty(input.assessment) ?? current.subject,
         value: input.value ?? input.score ?? current.value,
         weight: input.weight ?? current.weight
     });

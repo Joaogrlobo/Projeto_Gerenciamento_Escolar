@@ -77,7 +77,7 @@ async function listAllocations(query) {
 async function createAllocation(input, authorization) {
     const item = validateAllocation(input);
     await ensureReferences(item);
-    await teachersService.ensureTeacher(item.teacher_id, authorization);
+    await teachersService.ensureTeacher(item.teacher_id, authorization, { requireActive: true });
     const created = await allocationsRepository.withScheduleLock(async database => {
         await validateNoConflicts(item, database);
         const allocation = await allocationsRepository.create(item, database);
