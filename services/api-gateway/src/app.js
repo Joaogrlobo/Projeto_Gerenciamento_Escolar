@@ -86,6 +86,15 @@ for (const route of routes) {
                 ? (path) => path.replace(/^\/api(?=\/|$)/, '')
                 : undefined,
         on: {
+            // O gateway é a única autoridade de CORS para o navegador: descarta os headers
+            // Access-Control-* dos serviços para que não sobrescrevam os definidos acima.
+            proxyRes: (proxyRes) => {
+                for (const header of Object.keys(proxyRes.headers)) {
+                    if (header.startsWith('access-control-')) {
+                        delete proxyRes.headers[header];
+                    }
+                }
+            },
             error: (error, _req, res) => {
                 if (res?.locals) {
                     res.locals.upstreamFailed = true;

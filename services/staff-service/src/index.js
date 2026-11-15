@@ -10,4 +10,7 @@ connect();
 init(schema).then(() => {
     createRelay({ pool, publish }).start();
     app.listen(config.port, () => console.log(`staff-service na porta ${config.port}`));
+}).catch(error => {
+    console.error('Falha ao inicializar staff-service:', error.message);
+    process.exit(1);
 });

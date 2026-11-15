@@ -10,8 +10,12 @@ const { withTransaction } = require('../config/db');
 const ROLES = ['admin', 'teacher', 'student', 'parent', 'staff'];
 const PUBLIC_ROLES = ['student', 'parent'];
 
+function isFilledString(value) {
+    return typeof value === 'string' && value.trim() !== '';
+}
+
 async function createUser({ name, email, password, role }) {
-    if (!name || !email || !password) {
+    if (!isFilledString(name) || !isFilledString(email) || !isFilledString(password)) {
         throw new BadRequestError('name, email e password são obrigatórios');
     }
     if (password.length < 6) {
@@ -38,7 +42,7 @@ async function createAdminUser(user) {
 }
 
 async function login({ email, password }) {
-    if (!email || !password) {
+    if (!isFilledString(email) || !isFilledString(password)) {
         throw new BadRequestError('email e password são obrigatórios');
     }
     const user = await usersRepository.findByEmail(email.toLowerCase());

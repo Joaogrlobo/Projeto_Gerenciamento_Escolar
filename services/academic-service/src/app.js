@@ -1,5 +1,7 @@
 // Aplicação Express, health check, rotas acadêmicas e erro em JSON.
 const express = require('express');
+const cors = require('cors');
+const config = require('./config/env');
 const enrollmentsRoutes = require('./routes/enrollments.routes');
 const gradesRoutes = require('./routes/grades.routes');
 const attendanceRoutes = require('./routes/attendance.routes');
@@ -10,6 +12,7 @@ const { circuitStates } = require('./resilience/resilient-call');
 const app = express();
 const academicRoutes = express.Router();
 app.disable('x-powered-by');
+app.use(cors({ origin: config.corsOrigin }));
 app.use(express.json({ limit: '1mb' }));
 
 app.get('/health', (req, res) => res.json({

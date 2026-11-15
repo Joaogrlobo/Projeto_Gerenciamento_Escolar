@@ -2,7 +2,7 @@
 const usersService = require('../services/users.service');
 
 async function create(req, res) {
-    const user = await usersService.createAdminUser(req.body);
+    const user = await usersService.createAdminUser(req.body ?? {});
     res.status(201).json(user);
 }
 

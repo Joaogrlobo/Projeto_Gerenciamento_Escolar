@@ -151,7 +151,7 @@ export function GradesPage() {
 
   async function submit(event) {
     event.preventDefault(); setBusy(true); setError(''); setMessage('');
-    const payload = { ...values, enrollmentId: selected };
+    const payload = { ...values, weight: values.weight ?? 1, enrollmentId: selected };
     try {
       if (editing) await http.put(`/api/academic/grades/${encodeURIComponent(editing)}`, payload);
       else await http.post('/api/academic/grades', payload);
@@ -162,7 +162,7 @@ export function GradesPage() {
   }
   function edit(record) {
     setEditing(String(record.id));
-    setValues({ value: record.value ?? record.grade ?? record.score ?? '', assessment: record.assessment ?? record.name ?? '' });
+    setValues({ value: record.value ?? record.grade ?? record.score ?? '', subject: record.subject ?? '', weight: record.weight ?? 1 });
   }
   async function remove(record) {
     if (!window.confirm('Excluir esta nota?')) return;
@@ -172,14 +172,15 @@ export function GradesPage() {
   return <section className="page">
     <div className="page-heading"><div><p className="eyebrow">ACOMPANHAMENTO</p><h1>Notas</h1></div><span className="average-badge">Média <strong>{average}</strong></span></div>
     <ErrorMessage>{error}</ErrorMessage>{message && <div className="alert alert-success">{message}</div>}
-    <div className="panel selection-panel"><label className="field"><span>Selecione a matrícula</span><select value={selected} onChange={(event) => setSelected(event.target.value)}><option value="">Selecione uma matrícula</option>{enrollments.map((item) => <option value={item.id} key={item.id}>{item.studentName || item.studentId || item.id} — {item.className || item.classId || ''}</option>)}</select></label></div>
+    <div className="panel selection-panel"><label className="field"><span>Selecione a matrícula</span><select value={selected} onChange={(event) => setSelected(event.target.value)}><option value="">Selecione uma matrícula</option>{enrollments.map((item) => <option value={item.id} key={item.id}>#{item.id} · aluno {item.studentName || item.studentId || item.student_id || '—'} · turma {item.className || item.classId || item.course_id || '—'}</option>)}</select></label></div>
     <div className="content-grid">
       <form className="panel form-panel" onSubmit={submit}><h2>{editing ? 'Editar nota' : 'Lançar nota'}</h2>
-        <label className="field"><span>Avaliação</span><input value={values.assessment || ''} onChange={(event) => setValues({ ...values, assessment: event.target.value })} /></label>
+        <label className="field"><span>Avaliação</span><input value={values.subject || ''} onChange={(event) => setValues({ ...values, subject: event.target.value })} /></label>
+        <label className="field"><span>Peso</span><input required type="number" min="0.001" step="0.001" value={values.weight ?? 1} onChange={(event) => setValues({ ...values, weight: event.target.value })} /></label>
         <label className="field"><span>Nota</span><input required type="number" step="0.01" value={values.value ?? ''} onChange={(event) => setValues({ ...values, value: event.target.value })} /></label>
         <div className="form-actions"><button className="button" disabled={busy || !selected}>{busy ? 'Salvando…' : editing ? 'Salvar nota' : 'Registrar nota'}</button>{editing && <button className="button button-quiet" onClick={() => { setEditing(''); setValues({}); }} type="button">Cancelar</button>}</div>
       </form>
-      <div className="panel table-panel"><h2>Notas da matrícula</h2>{loading ? <div className="state-message">Carregando notas…</div> : records.length === 0 ? <div className="state-message">Nenhuma nota cadastrada.</div> : <div className="table-scroll"><table><thead><tr><th>Avaliação</th><th>Nota</th><th>Ações</th></tr></thead><tbody>{records.map((record) => <tr key={record.id}><td>{record.assessment || record.name || '—'}</td><td>{record.value ?? record.grade ?? record.score ?? '—'}</td><td className="row-actions"><button className="text-button" onClick={() => edit(record)} type="button">Editar</button><button className="text-button danger-text" onClick={() => remove(record)} type="button">Excluir</button></td></tr>)}</tbody></table></div>}</div>
+      <div className="panel table-panel"><h2>Notas da matrícula</h2>{loading ? <div className="state-message">Carregando notas…</div> : records.length === 0 ? <div className="state-message">Nenhuma nota cadastrada.</div> : <div className="table-scroll"><table><thead><tr><th>Avaliação</th><th>Nota</th><th>Peso</th><th>Ações</th></tr></thead><tbody>{records.map((record) => <tr key={record.id}><td>{record.subject || '—'}</td><td>{record.value ?? record.grade ?? record.score ?? '—'}</td><td>{record.weight ?? '—'}</td><td className="row-actions"><button className="text-button" onClick={() => edit(record)} type="button">Editar</button><button className="text-button danger-text" onClick={() => remove(record)} type="button">Excluir</button></td></tr>)}</tbody></table></div>}</div>
     </div>
   </section>;
 }

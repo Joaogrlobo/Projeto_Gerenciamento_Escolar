@@ -5,8 +5,9 @@ set -uo pipefail
 cd "$(dirname "$0")/.."
 
 set -a
+# Remove o \r caso o .env tenha sido salvo com quebras de linha do Windows.
 # shellcheck disable=SC1091
-source .env
+source <(tr -d '\r' < .env)
 set +a
 
 BASE_URL="${BASE_URL:-http://localhost:8080}"

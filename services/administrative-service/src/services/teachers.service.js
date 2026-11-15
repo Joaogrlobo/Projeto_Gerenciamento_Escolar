@@ -1,5 +1,5 @@
 const config = require('../config/env');
-const { AppError, NotFoundError, ServiceUnavailableError } = require('../errors/AppError');
+const { AppError, ConflictError, NotFoundError, ServiceUnavailableError } = require('../errors/AppError');
 const { createResilientCall } = require('../resilience/resilient-call');
 
 const UNAVAILABLE_MESSAGE = 'serviço de funcionários indisponível';
@@ -30,10 +30,13 @@ async function fetchEmployee(teacherId, authorization) {
     }
 }
 
-async function ensureTeacher(teacherId, authorization) {
+async function ensureTeacher(teacherId, authorization, { requireActive = false } = {}) {
     const employee = await staffCall(() => fetchEmployee(teacherId, authorization));
     if (!employee || employee.type !== 'teacher') {
         throw new NotFoundError('professor não encontrado');
+    }
+    if (requireActive && employee.active === false) {
+        throw new ConflictError('professor inativo');
     }
     return employee;
 }

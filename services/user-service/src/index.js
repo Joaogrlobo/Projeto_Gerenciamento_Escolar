@@ -12,4 +12,7 @@ connect();
 init(schema).then(seedAdmin).then(() => {
     createRelay({ pool, publish }).start();
     app.listen(config.port, () => console.log(`user-service na porta ${config.port}`));
+}).catch(error => {
+    console.error('Falha ao inicializar user-service:', error.message);
+    process.exit(1);
 });

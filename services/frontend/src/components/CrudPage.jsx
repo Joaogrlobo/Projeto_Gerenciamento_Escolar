@@ -7,7 +7,7 @@ function display(value) {
   return String(value);
 }
 
-export function CrudPage({ title, endpoint, fields, columns, search = true, extraQuery = '', canEdit = true, canDelete = canEdit }) {
+export function CrudPage({ title, endpoint, fields, columns, search = true, extraQuery = '', canEdit = true, canDelete = canEdit, rowActions = canEdit }) {
   const [records, setRecords] = useState([]);
   const [values, setValues] = useState({});
   const [editing, setEditing] = useState(null);
@@ -140,10 +140,10 @@ export function CrudPage({ title, endpoint, fields, columns, search = true, extr
             </select>
           </label>}
           {loading ? <div className="state-message">Carregando registros…</div> : records.length === 0 ? <div className="state-message">Nenhum registro encontrado.</div> : (
-            <div className="table-scroll"><table><thead><tr>{visibleColumns.map((column) => <th key={column}>{column === 'id' ? 'ID' : fieldList.find((field) => field.name === column)?.label || column}</th>)}{canEdit && <th>Ações</th>}</tr></thead>
+            <div className="table-scroll"><table><thead><tr>{visibleColumns.map((column) => <th key={column}>{column === 'id' ? 'ID' : fieldList.find((field) => field.name === column)?.label || column}</th>)}{rowActions && <th>Ações</th>}</tr></thead>
               <tbody>{records.map((record, index) => <tr key={record.id ?? index}>
                 {visibleColumns.map((column) => <td key={column}>{display(record[column])}</td>)}
-                {canEdit && <td className="row-actions"><button className="text-button" onClick={() => startEdit(record)} type="button">Editar</button>{canDelete && <button className="text-button danger-text" onClick={() => remove(record)} type="button">Excluir</button>}</td>}
+                {rowActions && <td className="row-actions"><button className="text-button" onClick={() => startEdit(record)} type="button">Editar</button>{canDelete && <button className="text-button danger-text" onClick={() => remove(record)} type="button">Excluir</button>}</td>}
               </tr>)}</tbody></table></div>
           )}
         </div>

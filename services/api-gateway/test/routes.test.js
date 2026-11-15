@@ -20,13 +20,18 @@ function createToken() {
 
 before(async () => {
     upstream = http.createServer((req, res) => {
-        res.writeHead(200, { 'content-type': 'application/json' });
+        // Simula um serviço com cors() próprio liberando qualquer origem.
+        res.writeHead(200, {
+            'content-type': 'application/json',
+            'access-control-allow-origin': '*'
+        });
         res.end(JSON.stringify({ path: req.url }));
     });
     await new Promise((resolve) => upstream.listen(0, '127.0.0.1', resolve));
 
     const upstreamUrl = `http://127.0.0.1:${upstream.address().port}`;
     process.env.JWT_SECRET = secret;
+    process.env.CORS_ORIGIN = 'http://app.test';
     process.env.USER_SERVICE_URL = upstreamUrl;
     process.env.STUDENT_SERVICE_URL = upstreamUrl;
     process.env.STAFF_SERVICE_URL = upstreamUrl;
@@ -58,6 +63,22 @@ test('/api/students is forwarded to student-service as /students', async () => {
 
     assert.equal(response.status, 200);
     assert.deepEqual(await response.json(), { path: '/students' });
+});
+
+test('gateway CORS policy wins over CORS headers sent by the service', async () => {
+    const headers = { Authorization: `Bearer ${createToken()}` };
+
+    const allowed = await fetch(`${gatewayBaseUrl}/api/students`, {
+        headers: { ...headers, Origin: 'http://app.test' }
+    });
+    assert.equal(allowed.status, 200);
+    assert.equal(allowed.headers.get('access-control-allow-origin'), 'http://app.test');
+
+    const denied = await fetch(`${gatewayBaseUrl}/api/students`, {
+        headers: { ...headers, Origin: 'http://evil.test' }
+    });
+    assert.equal(denied.status, 200);
+    assert.equal(denied.headers.get('access-control-allow-origin'), null);
 });
 
 test('all mapped /api prefixes are stripped before forwarding', async (t) => {

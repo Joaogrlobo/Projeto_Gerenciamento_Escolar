@@ -11,5 +11,5 @@ init(schema).then(() => {
     app.listen(config.port, () => console.log(`administrative-service na porta ${config.port}`));
 }).catch(error => {
     console.error('Falha ao inicializar administrative-service:', error.message);
-    process.exitCode = 1;
+    process.exit(1);
 });

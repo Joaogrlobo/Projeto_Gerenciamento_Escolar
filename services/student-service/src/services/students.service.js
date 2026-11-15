@@ -4,11 +4,18 @@ const { BadRequestError, NotFoundError } = require('../errors/AppError');
 const { publishEvent } = require('../messaging/publisher');
 const { withTransaction } = require('../config/db');
 
+function ensureId(id) {
+    if (!/^\d+$/.test(String(id)) || Number(id) < 1 || Number(id) > 2147483647) {
+        throw new BadRequestError('id de aluno inválido');
+    }
+}
+
 function listStudents(query) {
     return studentsRepository.list(`%${query || ''}%`);
 }
 
 async function getStudent(id) {
+    ensureId(id);
     const student = await studentsRepository.findById(id);
     if (!student) throw new NotFoundError('aluno não encontrado');
     return student;
@@ -27,6 +34,7 @@ async function createStudent(student) {
 }
 
 async function updateStudent(id, student) {
+    ensureId(id);
     return withTransaction(async client => {
         const updated = await studentsRepository.update(id, student, client);
         if (!updated) throw new NotFoundError('aluno não encontrado');
@@ -36,6 +44,7 @@ async function updateStudent(id, student) {
 }
 
 async function deleteStudent(id) {
+    ensureId(id);
     await withTransaction(async client => {
         const result = await studentsRepository.remove(id, client);
         if (!result.rowCount) throw new NotFoundError('aluno não encontrado');

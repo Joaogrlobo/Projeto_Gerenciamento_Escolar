@@ -16,7 +16,7 @@ async function start() {
     connect({ onLive: hub.broadcast });
 }
 
-start().catch(() => {
-    console.error('Falha ao inicializar notification-service');
+start().catch(error => {
+    console.error('Falha ao inicializar notification-service:', error.message);
     process.exitCode = 1;
 });

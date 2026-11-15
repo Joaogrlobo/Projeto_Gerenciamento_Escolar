@@ -6,11 +6,18 @@ const { withTransaction } = require('../config/db');
 
 const TYPES = ['teacher', 'admin_staff'];
 
+function ensureId(id) {
+    if (!/^\d+$/.test(String(id)) || Number(id) < 1 || Number(id) > 2147483647) {
+        throw new BadRequestError('id de funcionário inválido');
+    }
+}
+
 function listEmployees(query, type) {
     return employeesRepository.list(`%${query || ''}%`, type);
 }
 
 async function getEmployee(id) {
+    ensureId(id);
     const employee = await employeesRepository.findById(id);
     if (!employee) throw new NotFoundError('funcionário não encontrado');
     return employee;
@@ -18,7 +25,7 @@ async function getEmployee(id) {
 
 async function createEmployee(employee) {
     const { type, name, email } = employee;
-    if (!TYPES.includes(type) || !name || !email) {
+    if (!TYPES.includes(type) || !name || typeof email !== 'string' || !email.trim()) {
         throw new BadRequestError('type (teacher|admin_staff), name e email são obrigatórios');
     }
     return withTransaction(async client => {
@@ -29,6 +36,7 @@ async function createEmployee(employee) {
 }
 
 async function updateEmployee(id, employee) {
+    ensureId(id);
     return withTransaction(async client => {
         const updated = await employeesRepository.update(id, employee, client);
         if (!updated) throw new NotFoundError('funcionário não encontrado');
@@ -38,6 +46,7 @@ async function updateEmployee(id, employee) {
 }
 
 async function deleteEmployee(id) {
+    ensureId(id);
     await withTransaction(async client => {
         const result = await employeesRepository.remove(id, client);
         if (!result.rowCount) throw new NotFoundError('funcionário não encontrado');

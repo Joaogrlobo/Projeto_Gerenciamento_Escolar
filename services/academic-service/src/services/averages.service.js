@@ -76,7 +76,11 @@ async function processGradeEvent(event) {
         await client.query('COMMIT');
         return calculated;
     } catch (error) {
-        await client.query('ROLLBACK');
+        try {
+            await client.query('ROLLBACK');
+        } catch {
+            // Uma conexão perdida já descarta a transação.
+        }
         throw error;
     } finally {
         client.release();

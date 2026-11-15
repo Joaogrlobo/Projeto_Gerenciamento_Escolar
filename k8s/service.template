@@ -10,7 +10,7 @@ spec:
     spec:
       containers:
         - name: __NAME__
-          image: distrischool/__NAME__:0.2
+          image: distrischool/__NAME__:0.3
           imagePullPolicy: Never
           ports: [{ containerPort: __PORT__ }]
           env:
