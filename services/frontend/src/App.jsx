@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, Navigate, NavLink, Route, Routes, useLocation } from 'react-router-dom';
 import { useAuth } from './auth/AuthContext';
+import { canView, canWrite } from './auth/permissions';
 import { canSeeNotifications, useNotifications } from './realtime/NotificationsProvider';
 import { CrudPage } from './components/CrudPage';
 import { AttendancePage, AllocationsPage, EnrollmentsPage, GradesPage, NotificationsPage } from './pages/AcademicPages';
@@ -32,9 +33,10 @@ const userFields = [
 ];
 
 function Protected({ children, admin = false }) {
-  const { token, isAdmin } = useAuth();
+  const { token, isAdmin, user } = useAuth();
+  const { pathname } = useLocation();
   if (!token) return <Navigate to="/login" replace />;
-  if (admin && !isAdmin) return <Navigate to="/" replace />;
+  if ((admin && !isAdmin) || !canView(user, pathname)) return <Navigate to="/" replace />;
   return children;
 }
 
@@ -43,7 +45,7 @@ function Sidebar() {
   const { unread } = useNotifications();
   const [open, setOpen] = useState(false);
   const role = user?.role || 'Usuário';
-  const links = [
+  const allLinks = [
     { to: '/', label: 'Visão geral', icon: '⌂' },
     { to: '/students', label: 'Alunos', icon: '◉' },
     { to: '/employees', label: 'Funcionários', icon: '♧' },
@@ -58,6 +60,7 @@ function Sidebar() {
       { to: '/users', label: 'Usuários', icon: '♙' },
     ] : []),
   ];
+  const links = allLinks.filter((link) => canView(user, link.to));
   return <>
     <button className="mobile-menu" type="button" onClick={() => setOpen(!open)} aria-label="Abrir menu">☰</button>
     {open && <button className="sidebar-backdrop" aria-label="Fechar menu" onClick={() => setOpen(false)} />}
@@ -87,14 +90,13 @@ function NotificationsRoute() {
 }
 
 function StudentsPage() {
-  const { user, isAdmin } = useAuth();
-  const canEdit = isAdmin || ['staff'].includes(user?.role);
-  return <CrudPage title="Alunos" endpoint="/api/students" fields={studentFields} columns={['registration', 'name', 'birth_date', 'class_name', 'contact']} canEdit={canEdit} canDelete={isAdmin} />;
+  const { user } = useAuth();
+  return <CrudPage title="Alunos" endpoint="/api/students" fields={studentFields} columns={['registration', 'name', 'birth_date', 'class_name', 'contact']} canEdit={canWrite(user, 'students')} canDelete={canWrite(user, 'studentsDelete')} />;
 }
 
 function EmployeesPage() {
-  const { isAdmin } = useAuth();
-  return <CrudPage title="Funcionários" endpoint="/api/employees" fields={employeeFields} columns={['name', 'type', 'email', 'phone', 'position']} canEdit={isAdmin} />;
+  const { user } = useAuth();
+  return <CrudPage title="Funcionários" endpoint="/api/employees" fields={employeeFields} columns={['name', 'type', 'email', 'phone', 'position']} canEdit={canWrite(user, 'employees')} />;
 }
 
 export default function App() {
