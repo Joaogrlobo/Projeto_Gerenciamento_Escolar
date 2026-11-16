@@ -2,11 +2,12 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { http } from '../api/client';
 import { useNotifications } from '../realtime/NotificationsProvider';
 import { useAuth } from '../auth/AuthContext';
+import { canWrite as hasWritePermission } from '../auth/permissions';
 
-// Espelha as permissões de escrita da API (docs/api.md): o formulário só aparece para quem pode enviar.
-function useCanWrite(roles) {
+// O formulário só aparece para quem a API deixa enviar (ver auth/permissions.js).
+function useCanWrite(area) {
   const { user } = useAuth();
-  return roles.includes(String(user?.role || '').toLowerCase());
+  return hasWritePermission(user, area);
 }
 
 function recordsFrom(data) {
@@ -32,7 +33,7 @@ export function AllocationsPage() {
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const [classId, setClassId] = useState('');
-  const canWrite = useCanWrite(['admin']);
+  const canWrite = useCanWrite('allocations');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -90,7 +91,7 @@ export function EnrollmentsPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
-  const canWrite = useCanWrite(['admin', 'staff']);
+  const canWrite = useCanWrite('enrollments');
   const load = useCallback(async () => {
     setLoading(true);
     try { setRecords(recordsFrom(await http.get('/api/academic/enrollments'))); setError(''); }
@@ -127,6 +128,7 @@ export function GradesPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
+  const canWrite = useCanWrite('grades');
 
   const loadEnrollments = useCallback(async () => {
     try {
@@ -182,14 +184,14 @@ export function GradesPage() {
     <div className="page-heading"><div><p className="eyebrow">ACOMPANHAMENTO</p><h1>Notas</h1></div><span className="average-badge">Média <strong>{average}</strong></span></div>
     <ErrorMessage>{error}</ErrorMessage>{message && <div className="alert alert-success">{message}</div>}
     <div className="panel selection-panel"><label className="field"><span>Selecione a matrícula</span><select value={selected} onChange={(event) => setSelected(event.target.value)}><option value="">Selecione uma matrícula</option>{enrollments.map((item) => <option value={item.id} key={item.id}>#{item.id} · aluno {item.studentName || item.studentId || item.student_id || '—'} · turma {item.className || item.classId || item.course_id || '—'}</option>)}</select></label></div>
-    <div className="content-grid">
-      <form className="panel form-panel" onSubmit={submit}><h2>{editing ? 'Editar nota' : 'Lançar nota'}</h2>
+    <div className={`content-grid${canWrite ? '' : ' content-grid-single'}`}>
+      {canWrite && <form className="panel form-panel" onSubmit={submit}><h2>{editing ? 'Editar nota' : 'Lançar nota'}</h2>
         <label className="field"><span>Avaliação</span><input value={values.subject || ''} onChange={(event) => setValues({ ...values, subject: event.target.value })} /></label>
         <label className="field"><span>Peso</span><input required type="number" min="0.001" step="0.001" value={values.weight ?? 1} onChange={(event) => setValues({ ...values, weight: event.target.value })} /></label>
         <label className="field"><span>Nota</span><input required type="number" step="0.01" value={values.value ?? ''} onChange={(event) => setValues({ ...values, value: event.target.value })} /></label>
         <div className="form-actions"><button className="button" disabled={busy || !selected}>{busy ? 'Salvando…' : editing ? 'Salvar nota' : 'Registrar nota'}</button>{editing && <button className="button button-quiet" onClick={() => { setEditing(''); setValues({}); }} type="button">Cancelar</button>}</div>
-      </form>
-      <div className="panel table-panel"><h2>Notas da matrícula</h2>{loading ? <div className="state-message">Carregando notas…</div> : records.length === 0 ? <div className="state-message">Nenhuma nota cadastrada.</div> : <div className="table-scroll"><table><thead><tr><th>Avaliação</th><th>Nota</th><th>Peso</th><th>Ações</th></tr></thead><tbody>{records.map((record) => <tr key={record.id}><td>{record.subject || '—'}</td><td>{record.value ?? record.grade ?? record.score ?? '—'}</td><td>{record.weight ?? '—'}</td><td className="row-actions"><button className="text-button" onClick={() => edit(record)} type="button">Editar</button><button className="text-button danger-text" onClick={() => remove(record)} type="button">Excluir</button></td></tr>)}</tbody></table></div>}</div>
+      </form>}
+      <div className="panel table-panel"><h2>Notas da matrícula</h2>{loading ? <div className="state-message">Carregando notas…</div> : records.length === 0 ? <div className="state-message">Nenhuma nota cadastrada.</div> : <div className="table-scroll"><table><thead><tr><th>Avaliação</th><th>Nota</th><th>Peso</th>{canWrite && <th>Ações</th>}</tr></thead><tbody>{records.map((record) => <tr key={record.id}><td>{record.subject || '—'}</td><td>{record.value ?? record.grade ?? record.score ?? '—'}</td><td>{record.weight ?? '—'}</td>{canWrite && <td className="row-actions"><button className="text-button" onClick={() => edit(record)} type="button">Editar</button><button className="text-button danger-text" onClick={() => remove(record)} type="button">Excluir</button></td>}</tr>)}</tbody></table></div>}</div>
     </div>
   </section>;
 }
@@ -203,6 +205,7 @@ export function AttendancePage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
+  const canWrite = useCanWrite('attendance');
   async function loadSummary(event) {
     event?.preventDefault();
     if (!classId) return;
@@ -224,15 +227,15 @@ export function AttendancePage() {
   return <section className="page">
     <div className="page-heading"><div><p className="eyebrow">PRESENÇA E PARTICIPAÇÃO</p><h1>Frequência</h1></div></div>
     <ErrorMessage>{error}</ErrorMessage>{message && <div className="alert alert-success">{message}</div>}
-    <div className="content-grid">
-      <form className="panel form-panel" onSubmit={submit}><h2>Registro em lote</h2>
+    <div className={`content-grid${canWrite ? '' : ' content-grid-single'}`}>
+      {canWrite && <form className="panel form-panel" onSubmit={submit}><h2>Registro em lote</h2>
         <label className="field"><span>ID da turma</span><input required value={classId} onChange={(event) => setClassId(event.target.value)} /></label>
         <label className="field"><span>Data</span><input required type="date" value={date} onChange={(event) => setDate(event.target.value)} /></label>
         <label className="field"><span>IDs dos alunos (separados por vírgula ou espaço)</span><textarea required rows="3" value={studentIds} onChange={(event) => setStudentIds(event.target.value)} /></label>
         <label className="field"><span>Registro</span><select value={status} onChange={(event) => setStatus(event.target.value)}><option value="present">Presente</option><option value="absent">Ausente</option><option value="justified">Falta justificada</option></select></label>
         <button className="button" disabled={busy}>{busy ? 'Enviando…' : 'Registrar frequência'}</button>
-      </form>
-      <div className="panel table-panel"><div className="table-heading"><h2>Resumo de frequência</h2><button className="button button-secondary" type="button" onClick={loadSummary}>Consultar</button></div>
+      </form>}
+      <div className="panel table-panel"><div className="table-heading"><h2>Resumo de frequência</h2>{!canWrite && <><input className="search" placeholder="ID da turma" value={classId} onChange={(event) => setClassId(event.target.value)} /><input className="search" type="date" aria-label="Data" value={date} onChange={(event) => setDate(event.target.value)} /></>}<button className="button button-secondary" type="button" onClick={loadSummary}>Consultar</button></div>
         {!summary ? <div className="state-message">Informe a turma e consulte para ver o resumo diário.</div> : typeof summary === 'object' && !Array.isArray(summary) ? <div className="summary-grid">{Object.entries(summary).map(([key, value]) => <div className="summary-item" key={key}><span>{key}</span><strong>{String(value)}</strong></div>)}</div> : <DataTable rows={recordsFrom(summary)} columns={Object.keys(recordsFrom(summary)[0] || {}).map((key) => [key, key])} /> }
       </div>
     </div>
