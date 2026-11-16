@@ -1,6 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { http } from '../api/client';
 import { useNotifications } from '../realtime/NotificationsProvider';
+import { useAuth } from '../auth/AuthContext';
+
+// Espelha as permissões de escrita da API (docs/api.md): o formulário só aparece para quem pode enviar.
+function useCanWrite(roles) {
+  const { user } = useAuth();
+  return roles.includes(String(user?.role || '').toLowerCase());
+}
 
 function recordsFrom(data) {
   return Array.isArray(data) ? data : data?.items || data?.data || [];
@@ -25,6 +32,7 @@ export function AllocationsPage() {
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const [classId, setClassId] = useState('');
+  const canWrite = useCanWrite(['admin']);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -62,12 +70,12 @@ export function AllocationsPage() {
   return <section className="page">
     <div className="page-heading"><div><p className="eyebrow">ORGANIZAÇÃO ACADÊMICA</p><h1>Alocações</h1></div><button className="button button-secondary" onClick={load} type="button">Atualizar</button></div>
     <ErrorMessage>{error}</ErrorMessage>{message && <div className="alert alert-success">{message}</div>}
-    <div className="content-grid">
-      <form className="panel form-panel" onSubmit={submit}><h2>Nova alocação</h2>
+    <div className={`content-grid${canWrite ? '' : ' content-grid-single'}`}>
+      {canWrite && <form className="panel form-panel" onSubmit={submit}><h2>Nova alocação</h2>
         {[['class_id', 'ID da turma'], ['subject_id', 'ID da disciplina'], ['teacher_id', 'ID do professor'], ['weekday', 'Dia da semana (1-5)'], ['start_time', 'Horário inicial'], ['end_time', 'Horário final']].map(([name, label]) => <label className="field" key={name}><span>{label}</span><input required value={values[name] || ''} type={name.includes('time') ? 'time' : 'number'} min={!name.includes('time') ? 1 : undefined} max={name === 'weekday' ? 5 : undefined} onChange={(event) => setValues({ ...values, [name]: event.target.value })} /></label>)}
         <label className="field"><span>Sala (opcional)</span><input value={values.room || ''} onChange={(event) => setValues({ ...values, room: event.target.value })} /></label>
         <button className="button" disabled={busy}>{busy ? 'Salvando…' : 'Criar alocação'}</button>
-      </form>
+      </form>}
       <div className="panel table-panel"><div className="table-heading"><h2>Horários da turma</h2><input className="search" placeholder="ID da turma" value={classId} onChange={(event) => setClassId(event.target.value)} /></div>
         {loading ? <div className="state-message">Carregando horários…</div> : <DataTable rows={records} columns={Object.keys(records[0] || { id: '', class_id: '', subject_id: '', teacher_id: '', weekday: '', start_time: '', end_time: '', room: '' }).map((key) => [key, key])} />}
       </div>
@@ -82,6 +90,7 @@ export function EnrollmentsPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
+  const canWrite = useCanWrite(['admin', 'staff']);
   const load = useCallback(async () => {
     setLoading(true);
     try { setRecords(recordsFrom(await http.get('/api/academic/enrollments'))); setError(''); }
@@ -98,11 +107,11 @@ export function EnrollmentsPage() {
   return <section className="page">
     <div className="page-heading"><div><p className="eyebrow">VIDA ESCOLAR</p><h1>Matrículas</h1></div><button className="button button-secondary" type="button" onClick={load}>Atualizar</button></div>
     <ErrorMessage>{error}</ErrorMessage>{message && <div className="alert alert-success">{message}</div>}
-    <div className="content-grid">
-      <form className="panel form-panel" onSubmit={submit}><h2>Nova matrícula</h2>
+    <div className={`content-grid${canWrite ? '' : ' content-grid-single'}`}>
+      {canWrite && <form className="panel form-panel" onSubmit={submit}><h2>Nova matrícula</h2>
         {[['studentId', 'ID do aluno'], ['classId', 'ID da turma'], ['enrollmentDate', 'Data da matrícula', 'date']].map(([name, label, type]) => <label className="field" key={name}><span>{label}</span><input required type={type || 'text'} value={values[name] || ''} onChange={(event) => setValues({ ...values, [name]: event.target.value })} /></label>)}
         <button className="button" disabled={busy}>{busy ? 'Salvando…' : 'Matricular aluno'}</button>
-      </form>
+      </form>}
       <div className="panel table-panel"><h2>Matrículas registradas</h2>{loading ? <div className="state-message">Carregando matrículas…</div> : <DataTable rows={records} columns={Object.keys(records[0] || { id: '', studentId: '', classId: '', enrollmentDate: '', status: '' }).map((key) => [key, key])} />}</div>
     </div>
   </section>;

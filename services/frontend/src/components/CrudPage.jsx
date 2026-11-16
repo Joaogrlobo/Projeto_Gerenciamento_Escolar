@@ -106,8 +106,8 @@ export function CrudPage({ title, endpoint, fields, columns, search = true, extr
         <button className="button button-secondary" onClick={load} type="button">Atualizar</button>
       </div>
       {error && <div className="alert alert-error" role="alert">{error}</div>}
-      <div className="content-grid">
-        {canEdit && <form className="panel form-panel" onSubmit={submit}>
+      <div className={`content-grid${canEdit ? '' : ' content-grid-single'}`}>
+        {canEdit &&<form className="panel form-panel" onSubmit={submit}>
           <h2>{editing !== null ? 'Editar registro' : 'Novo registro'}</h2>
           {fieldList.map((field) => (
             <label className="field" key={field.name}>
