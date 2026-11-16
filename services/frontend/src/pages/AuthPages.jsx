@@ -30,9 +30,9 @@ function AuthForm({ register = false }) {
     : [{ name: 'email', label: 'E-mail', type: 'email' }, { name: 'password', label: 'Senha', type: 'password' }];
 
   return <main className="auth-page">
-    <div className="auth-decoration"><div className="brand-mark">DE</div><h1>Educação que transforma.</h1><p>Gestão simples e conectada para toda a comunidade escolar.</p></div>
+    <div className="auth-decoration"><div className="brand-mark">SF</div><h1>Educação que transforma.</h1><p>Gestão simples e conectada para toda a comunidade escolar.</p></div>
     <div className="auth-card">
-      <p className="eyebrow">DISTRITO ESCOLAR</p>
+      <p className="eyebrow">SCHOOLFLOW</p>
       <h2>{register ? 'Crie sua conta' : 'Bem-vindo de volta'}</h2>
       <p className="muted">{register ? 'Preencha seus dados para começar.' : 'Entre para acessar o sistema escolar.'}</p>
       {location.state?.registered && <div className="alert alert-success">Cadastro realizado. Entre com seu e-mail e senha.</div>}

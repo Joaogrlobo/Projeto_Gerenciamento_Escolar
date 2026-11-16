@@ -65,7 +65,7 @@ function Sidebar() {
     <button className="mobile-menu" type="button" onClick={() => setOpen(!open)} aria-label="Abrir menu">☰</button>
     {open && <button className="sidebar-backdrop" aria-label="Fechar menu" onClick={() => setOpen(false)} />}
     <aside className={`sidebar ${open ? 'sidebar-open' : ''}`}>
-      <Link to="/" className="brand" onClick={() => setOpen(false)}><span className="brand-mark">DE</span><span>Distrito<span className="brand-light">Escolar</span></span></Link>
+      <Link to="/" className="brand" onClick={() => setOpen(false)}><span className="brand-mark">SF</span><span>School<span className="brand-light">Flow</span></span></Link>
       <div className="menu-caption">MENU PRINCIPAL</div>
       <nav className="menu">{links.map((link) => <NavLink key={link.to} end={link.to === '/'} to={link.to} onClick={() => setOpen(false)} className={({ isActive }) => `menu-link${isActive ? ' active' : ''}`}><span className="menu-icon">{link.icon}</span>{link.label}{link.badge > 0 && <span className="menu-badge">{link.badge > 99 ? '99+' : link.badge}</span>}</NavLink>)}</nav>
       <div className="sidebar-bottom">

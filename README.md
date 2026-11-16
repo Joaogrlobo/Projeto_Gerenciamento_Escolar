@@ -1,4 +1,4 @@
-# DistriSchool
+# SchoolFlow
 
 Sistema distribuído para gestão escolar com API Gateway, serviços administrativos e acadêmicos, notificações assíncronas por RabbitMQ e interface web. Consulte [Requisitos](docs/requisitos.md), [API](docs/api.md) e [Mensageria](docs/mensageria.md) para os contratos e fluxos.
 

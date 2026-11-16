@@ -2,7 +2,7 @@
 
 ## Visão geral
 
-O DistriSchool organiza a lógica por domínio, mantendo a persistência de cada serviço isolada. O API Gateway é a entrada dos clientes e encaminha HTTP/JSON para os serviços. RabbitMQ desacopla eventos assíncronos, especialmente efeitos colaterais de notificação.
+O SchoolFlow organiza a lógica por domínio, mantendo a persistência de cada serviço isolada. O API Gateway é a entrada dos clientes e encaminha HTTP/JSON para os serviços. RabbitMQ desacopla eventos assíncronos, especialmente efeitos colaterais de notificação.
 
 ```text
 Cliente / Frontend

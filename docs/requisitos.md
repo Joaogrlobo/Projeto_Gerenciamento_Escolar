@@ -1,8 +1,8 @@
-# Requisitos do DistriSchool
+# Requisitos do SchoolFlow
 
 ## Objetivo e escopo
 
-O DistriSchool é um sistema distribuído de gestão escolar. Os serviços de usuário, aluno e funcionário formam a Entrega 1; gateway, administração, acadêmico, notificações e mensageria expandem o sistema. Esta fase documenta as rotas e os casos de validação da Fase 7. A tabela completa de verbos, endpoints e perfis está em [docs/api.md](api.md).
+O SchoolFlow é um sistema distribuído de gestão escolar. Os serviços de usuário, aluno e funcionário formam a Entrega 1; gateway, administração, acadêmico, notificações e mensageria expandem o sistema. Esta fase documenta as rotas e os casos de validação da Fase 7. A tabela completa de verbos, endpoints e perfis está em [docs/api.md](api.md).
 
 ## Requisitos funcionais
 

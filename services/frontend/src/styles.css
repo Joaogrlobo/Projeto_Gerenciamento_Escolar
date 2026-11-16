@@ -25,13 +25,13 @@ h2 { font-size: 1.08rem; margin-bottom: 20px; letter-spacing: -.025em; }
 h3 { font-size: .98rem; }
 
 .app-shell { min-height: 100vh; }
-.sidebar { background: var(--navy); bottom: 0; color: #fff; display: flex; flex-direction: column; left: 0; padding: 28px 18px 20px; position: fixed; top: 0; width: 252px; z-index: 20; }
+.sidebar { background: var(--navy); bottom: 0; color: #fff; display: flex; flex-direction: column; left: 0; overflow-y: auto; overscroll-behavior: contain; padding: 28px 18px 20px; position: fixed; top: 0; width: 252px; z-index: 20; }
 .brand { align-items: center; display: flex; gap: 12px; font-family: Manrope, sans-serif; font-size: 16px; font-weight: 800; letter-spacing: -.03em; padding: 0 8px; }
 .brand-mark { align-items: center; background: #7ba0ff; border-radius: 12px; color: #fff; display: inline-flex; flex: 0 0 42px; font-family: Manrope, sans-serif; font-size: 14px; font-weight: 800; height: 42px; justify-content: center; letter-spacing: -.05em; }
 .brand-light { color: #aab8cf; display: block; font-size: 12px; font-weight: 500; letter-spacing: .01em; }
 .menu-caption { color: #8190a8; font-size: 10px; font-weight: 700; letter-spacing: .14em; margin: 47px 12px 12px; }
-.menu { display: grid; gap: 5px; }
-.menu-link { align-items: center; border-radius: 9px; color: #b6c1d2; display: flex; font-size: 13px; font-weight: 500; gap: 13px; min-height: 43px; padding: 0 12px; transition: background .2s, color .2s; }
+.menu { display: grid; gap: 5px; padding-right: 4px; }
+.menu-link { align-items: center; border-radius: 9px; color: #b6c1d2; display: flex; font-size: 13px; font-weight: 500; gap: 13px; min-height: 43px; padding: 0 12px; transition: background .2s, color .2s; width: 100%; }
 .menu-link:hover, .menu-link.active { background: #28466d; color: #fff; }
 .menu-link.active { box-shadow: inset 3px 0 #83a3ff; }
 .menu-icon { color: #9db8f5; font-size: 17px; text-align: center; width: 19px; }
